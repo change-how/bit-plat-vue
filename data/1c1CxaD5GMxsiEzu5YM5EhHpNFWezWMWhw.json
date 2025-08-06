@@ -1,0 +1,186 @@
+{
+    "id": "币安账户 (1uqTuRZsE1sSYSeK8x1VG9TecRDs1xn)",
+    "data": {
+        "title": "币安账户",
+        "value": "1uqTuRZsE1sSYSeK8x1VG9TecRDs1xn"
+    },
+    "children": [
+        {
+            "id": "基本信息",
+            "data": {
+                "title": "基本信息"
+            },
+            "children": [
+                {
+                    "id": "姓名",
+                    "data": {
+                        "title": "姓名",
+                        "value": "林静"
+                    }
+                },
+                {
+                    "id": "身份证号",
+                    "data": {
+                        "title": "身份证号",
+                        "value": "520***********9431"
+                    }
+                },
+                {
+                    "id": "用户ID",
+                    "data": {
+                        "title": "用户ID",
+                        "value": "333995732"
+                    }
+                },
+                {
+                    "id": "手机号",
+                    "data": {
+                        "title": "手机号",
+                        "value": "13210403411"
+                    },
+                    "children": [
+                        {
+                            "id": "手机号归属地",
+                            "data": { "title": "手机号归属地", "value": "山东青岛" }
+                        },
+                        {
+                            "id": "运营商",
+                            "data": { "title": "运营商", "value": "联通" }
+                        }
+                    ]
+                },
+                {
+                    "id": "邮箱",
+                    "data": {
+                        "title": "邮箱",
+                        "value": "wang881@email.com"
+                    }
+                },
+                {
+                    "id": "注册时间",
+                    "data": {
+                        "title": "注册时间",
+                        "value": "2022-09-16 10:00:00"
+                    }
+                },
+                {
+                    "id": "账户验证时间",
+                    "data": {
+                        "title": "账户验证时间",
+                        "value": "2022-09-13 11:00:00"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "登录信息",
+            "data": {
+                "title": "登录信息"
+            },
+            "children": [
+                {
+                    "id": "最近登录时间",
+                    "data": {
+                        "title": "时间",
+                        "value": "2025-07-7 20:41:00"
+                    }
+                },
+                {
+                    "id": "最近登录地址",
+                    "data": {
+                        "title": "地址",
+                        "value": "天津市"
+                    }
+                },
+                {
+                    "id": "最近登录IP",
+                    "data": {
+                        "title": "IP",
+                        "value": "220.190.10.156"
+                    }
+                },
+                {
+                    "id": "最近登录客户端",
+                    "data": {
+                        "title": "客户端",
+                        "value": "网页"
+                    }
+                }
+                
+                
+            ]
+        },
+        {
+            "id": "账户余额信息",
+            "data": {
+                "title": "账户余额信息"
+            },
+            "children": [
+                {
+                    "id": "资产预览",
+                    "data": {
+                        "title": "资产预览",
+                        "value": "≈ $90,166"
+                    }
+                },
+                {
+                    "id": "现货账户持仓",
+                    "data": {
+                        "title": "现货账户持仓",
+                        "value": "1.0 BTC, 13.74 ETH"
+                    }
+                },
+                {
+                    "id": "资金账户持仓",
+                    "data": {
+                        "title": "资金账户持仓",
+                        "value": "17,157 USDT"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "充提币记录",
+            "data": {
+                "title": "充提币记录"
+            },
+            "children": [
+                {
+                    "id": "最近记录时间",
+                    "data": {
+                        "title": "时间",
+                        "value": "2025-07-19 18:00:00"
+                    }
+                },
+                {
+                    "id": "目标地址",
+                    "data": {
+                        "title": "提币地址",
+                        "value": "1YoLjxn9eqPs..."
+                    }
+                },
+                {
+                    "id": "交易数量",
+                    "data": {
+                        "title": "数量",
+                        "value": "0.8306 BTC"
+                    }
+                },
+                {
+                    "id": "交易币种",
+                    "data": {
+                        "title": "币种",
+                        "value": "BTC"
+                    }
+                },
+                {
+                    "id": "交易TXID",
+                    "data": {
+                        "title": "TXID",
+                        "value": "0xcbd3b5c2d7..."
+                    }
+                }
+            ]
+        }
+    ]
+}

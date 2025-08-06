@@ -1,0 +1,142 @@
+/* style.css (V2 - 包含主页和结果页的完整样式) */
+
+/* --- 1. 全局变量定义 (整个项目的“调色盘”) --- */
+:root {
+  --primary-color: #007aff;
+  --primary-color-dark: #0056b3;
+  --background-color: #f9fafb;
+  --component-background: #ffffff;
+  --border-color: #e5e7eb;
+  --text-color: #1f2937;
+  --text-color-secondary: #6b7280;
+  --hover-bg-color: #f0f6ff;
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --border-radius: 8px;
+}
+
+/* --- 2. 基础样式重置 --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: var(--font-family-sans);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    overflow: hidden;
+    html,
+    #app { /* #app 是你在 index.html 里的根 div 的 ID，请根据你的实际情况修改 */
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+}
+svg {
+    vertical-align: middle;
+}
+
+/* ============================================= */
+/* --- 3. 查询主页 (index.html) 专属样式 --- */
+/* ============================================= */
+.main-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 1rem;
+}
+.main-container h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 3rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.search-wrapper {
+    position: relative;
+    display: flex;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius);
+    margin-top: 1.5rem;
+}
+.search-label {
+    position: absolute;
+    top: -1.5rem;
+    left: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-color-secondary);
+}
+.search-input {
+    width: 550px;
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    border: none;
+    background-color: var(--component-background);
+    border-radius: var(--border-radius) 0 0 var(--border-radius);
+    outline: none;
+}
+.search-input::placeholder { color: var(--text-color-secondary); opacity: 0.8; }
+.btn {
+    padding: 1rem 1.75rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    white-space: nowrap;
+    border: none;
+    transition: background-color 0.2s ease-in-out;
+}
+.query-button { background-color: var(--primary-color); color: white; }
+.query-button:hover { background-color: var(--primary-color-dark); }
+.upload-button { background-color: var(--component-background); color: var(--primary-color); border-left: 1px solid var(--border-color); border-radius: 0 var(--border-radius) var(--border-radius) 0; }
+.upload-button:hover { background-color: var(--hover-bg-color); }
+#upload-status { margin-top: 1.5rem; font-size: 0.9rem; height: 20px; font-weight: 500; }
+
+/* ============================================= */
+/* --- 4. 结果页 (results.html) 专属样式 --- */
+/* ============================================= */
+.page-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+.sidebar-left, .sidebar-right {
+    background-color: var(--component-background);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.07);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+}
+.sidebar-left { flex-basis: 280px; border-right: 1px solid var(--border-color); }
+.sidebar-right { flex-basis: 320px; border-left: 1px solid var(--border-color); }
+.sidebar-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.sidebar-header h2 { margin: 0; font-size: 1.25em; font-weight: 600; }
+.sidebar-content { padding: 16px; overflow-y: auto; flex-grow: 1; }
+.directory-list { list-style-type: none; padding: 0; margin: 0; }
+.directory-list li { padding: 12px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 5px; border-left: 3px solid transparent; transition: all 0.2s ease; }
+.directory-list li:hover { background-color: var(--hover-bg-color); transform: translateX(3px); }
+.directory-list li.active { background-color: var(--hover-bg-color); color: var(--primary-color); font-weight: 600; border-left-color: var(--primary-color); }
+.main-content { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
+.main-content-header { padding: 18px 24px; background-color: var(--component-background); border-bottom: 1px solid var(--border-color); z-index: 5; }
+.main-content-header h3 { margin: 0; font-size: 1.25em; font-weight: 600; }
+#container { width: 100%; flex-grow: 1; }
+.detail-panel-placeholder { display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-color-secondary); text-align: center; font-size: 14px; line-height: 1.5; }
+.detail-item { margin-bottom: 16px; }
+.detail-label { font-size: 12px; color: var(--text-color-secondary); margin-bottom: 6px; }
+.detail-value { font-size: 14px; word-wrap: break-word; background-color: var(--background-color); padding: 10px 12px; border-radius: 6px; }
+
+/* G6 节点容器的过渡效果 */
+.g6-html-node-container { transition: transform 0.2s ease, box-shadow 0.2s ease; }
