@@ -8,6 +8,8 @@ const searchQuery = ref('');      // 绑定搜索输入框的内容
 const uploadStatus = ref('');     // 绑定上传状态的文本
 const uploadStatusColor = ref('');// 绑定上传状态文本的颜色
 
+
+
 // --- 路由与导航 ---
 // 获取路由实例，用于页面跳转
 const router = useRouter();
@@ -45,21 +47,53 @@ function triggerFileUpload() {
 /**
  * 处理文件选择后的事件
  */
-function handleFileUpload(event) {
+async function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const allowedExtensions = ['.xls', '.xlsx'];
+  // 1. “门卫”逻辑：文件类型校验
+  const allowedExtensions = ['.xls', '.xlsx', '.json'];
   const fileName = file.name;
   const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
 
-  // 这里不再是操作 DOM，而是更新我们的响应式变量
-  if (allowedExtensions.includes(fileExtension)) {
-    uploadStatus.value = `文件 "${fileName}" 类型正确，准备上传... (模拟成功 ✓)`;
-    uploadStatusColor.value = '#52c41a';
-  } else {
-    uploadStatus.value = '错误：请选择有效的 Excel 文件 (.xls 或 .xlsx)';
+  if (!allowedExtensions.includes(fileExtension)) {
+    uploadStatus.value = '错误：请选择有效的 Excel 或 JSON 文件';
     uploadStatusColor.value = '#ff4d4f';
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    // 2. 更新UI：告知用户上传开始
+    uploadStatus.value = `正在上传文件: "${file.name}"...`;
+    uploadStatusColor.value = '#1967d2';
+
+    // 3. 核心上传逻辑
+    const response = await fetch('http://127.0.0.1:5000/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const result = await response.json();
+
+    if (response.ok && result.status === 'success') {
+      // 4. 更新UI：成功
+      uploadStatus.value = result.message || `文件上传成功！`;
+      uploadStatusColor.value = '#52c41a';
+    } else {
+      throw new Error(result.message || '上传失败');
+    }
+
+  } catch (error) {
+    // 5. 更新UI：失败
+    uploadStatus.value = `错误: ${error.message}`;
+    uploadStatusColor.value = '#ff4d4f';
+    console.error('上传文件时出错:', error);
+  } finally {
+    // 6. 清理工作：无论成功失败，都重置文件输入框
+    event.target.value = '';
   }
 }
 </script>

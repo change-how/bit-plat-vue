@@ -1,0 +1,132 @@
+// === OKX 调证文件映射模板 v7.0 (精简核心版) ===
+// 描述: 本模板严格遵循“高度一致性，只入库核心数据”的原则，
+//       将OKX的数据，精炼并映射到7张核心数据库表中。
+{
+  "metadata": {
+    "source_name": "OKX",
+    "version": "7.0",
+    "author": "Gemini Assistant & Your Name"
+  },
+
+  // --- 1. 原材料清单 (Sources) ---
+  // 定义了需要从Excel中提取的所有核心工作表。
+  "sources": [
+    { "source_id": "user_info_raw", "worksheet_name": "用户信息", "header_row": 1 },
+    { "source_id": "fiat_trade_raw", "worksheet_name": "法币交易记录", "header_row": 1 },
+    { "source_id": "deposit_raw", "worksheet_name": "充币记录", "header_row": 1 },
+    { "source_id": "withdrawal_raw", "worksheet_name": "提币记录", "header_row": 1 },
+    { "source_id": "login_info_raw", "worksheet_name": "登录信息", "header_row": 1 },
+    { "source_id": "device_info_raw", "worksheet_name": "用户设备信息", "header_row": 1 },
+    { "source_id": "asset_history_raw", "worksheet_name": "okx充值提现账单", "header_row": 1 }
+  ],
+
+  // --- 2. 生产线清单 (Destinations) ---
+  // 定义了每一份原材料如何被加工，并送到哪个数据库表中。
+  "destinations": [
+    // --- 生产线 #1: 写入 'users' (统一用户信息表) ---
+    {
+      "target_table": "users",
+      "primary_source": "user_info_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "source_field_aliases": ["uuid"] },
+        { "target_field": "name", "source_field_aliases": ["姓名"] },
+        { "target_field": "registration_time", "source_field_aliases": ["注册时间"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "phone_number", "source_field_aliases": ["手机号"] },
+        { "target_field": "email", "source_field_aliases": ["邮箱"] }
+      ]
+    },
+
+    // --- 生产线 #2: 写入 'transactions' (统一交易记录表) ---
+    {
+      "target_table": "transactions",
+      "primary_source": "fiat_trade_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "lookup_source": "user_info_raw", "source_field_aliases": ["uuid"] },
+        { "target_field": "transaction_id", "source_field_aliases": ["订单号"] },
+        { "target_field": "transaction_time", "source_field_aliases": ["订单创建时间"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "transaction_type", "static_value": "C2C" },
+        { "target_field": "direction", "source_field_aliases": ["买卖"], "transformations": [{"function": "map_buy_sell"}] },
+        { "target_field": "base_asset", "source_field_aliases": ["交易币种"] },
+        { "target_field": "quote_asset", "source_field_aliases": ["计价单位"] },
+        { "target_field": "price", "source_field_aliases": ["单价"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "quantity", "source_field_aliases": ["数量"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "total_amount", "source_field_aliases": ["总金额"], "transformations": [{"function": "string_to_decimal"}] }
+        // 注意：OKX的法币交易记录没有手续费信息，所以这里不映射fee和fee_asset，数据库将自动为它们填充NULL
+      ]
+    },
+
+    // --- 生产线 #3: 写入 'asset_movements' (统一充提记录表) ---
+    {
+      "target_table": "asset_movements",
+      "primary_source": "deposit_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "source_field_aliases": ["uuid"] },
+        { "target_field": "direction", "static_value": "IN" },
+        { "target_field": "asset", "source_field_aliases": ["币种"] },
+        { "target_field": "quantity", "source_field_aliases": ["数量"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "address", "source_field_aliases": ["address"] },
+        { "target_field": "txid", "source_field_aliases": ["txid"] },
+        { "target_field": "transaction_time", "source_field_aliases": ["创建时间"], "transformations": [{"function": "parse_universal_datetime"}] }
+        // 注意：OKX的充值记录没有network和status，数据库将自动为它们填充NULL
+      ]
+    },
+    {
+      "target_table": "asset_movements",
+      "primary_source": "withdrawal_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "source_field_aliases": ["uuid"] },
+        { "target_field": "direction", "static_value": "OUT" },
+        { "target_field": "asset", "source_field_aliases": ["币种"] },
+        { "target_field": "quantity", "source_field_aliases": ["数量"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "address", "source_field_aliases": ["address"] },
+        { "target_field": "txid", "source_field_aliases": ["txid"] },
+        { "target_field": "transaction_time", "source_field_aliases": ["创建时间"], "transformations": [{"function": "parse_universal_datetime"}] }
+      ]
+    },
+    
+    // --- 生产线 #4: 写入 'login_logs' (统一登录日志表) ---
+    {
+      "target_table": "login_logs",
+      "primary_source": "login_info_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "source_field_aliases": ["uuid"] },
+        { "target_field": "login_time", "source_field_aliases": ["登陆时间"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "login_ip", "source_field_aliases": ["登陆ip"] },
+        { "target_field": "device_id", "source_field_aliases": ["设备id"] }
+      ]
+    },
+
+    // --- 生产线 #5: 写入 'devices' (统一设备信息表) ---
+    {
+        "target_table": "devices",
+        "primary_source": "device_info_raw",
+        "mappings": [
+          { "target_field": "source", "static_value": "OKX" },
+          { "target_field": "user_id", "lookup_source": "user_info_raw", "source_field_aliases": ["uuid"] },
+          { "target_field": "device_id", "source_field_aliases": ["设备id"] }
+          // 注意：OKX的设备信息非常简单，没有客户端类型、IP等信息，数据库将自动为这些列填充NULL
+        ]
+    },
+
+    // --- 生产线 #6: 写入 'asset_ledgers' (统一资产流水表) ---
+    {
+      "target_table": "asset_ledgers",
+      "primary_source": "asset_history_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "lookup_source": "user_info_raw", "source_field_aliases": ["uuid"] },
+        // 注意：OKX的这份账单没有独立的流水ID，record_id将为空
+        { "target_field": "record_time", "source_field_aliases": ["账单时间"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "asset", "source_field_aliases": ["币种"] },
+        { "target_field": "change_type", "source_field_aliases": ["类型"] },
+        { "target_field": "change_amount", "source_field_aliases": ["币的数量"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "balance_after", "source_field_aliases": ["之后的余额"], "transformations": [{"function": "string_to_decimal"}] }
+      ]
+    }
+  ]
+}
