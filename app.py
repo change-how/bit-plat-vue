@@ -49,75 +49,36 @@ def company_shortname(company_full):
     }
     return company_map.get(company_full, company_full.lower())
 
-def transform_node_for_tree(node):
-    """
-    数据节点转换器：将节点格式转换为 el-tree 所需的格式
-    """
-    new_node = {}
+@app.route('/api/search_uid', methods=['GET'])
+def search_uid():
+    """通过模糊查找获取用户ID列表"""
+    search_term = request.args.get('query')
+    if not search_term:
+        return jsonify({"status": "error", "message": "缺少查询参数"}), 400
+
+    logging.info(f"收到模糊查找请求: {search_term}")
     
-    if 'data' in node and 'title' in node['data']:
-        new_node['label'] = node['data']['title']
-    else:
-        new_node['label'] = '未命名节点'
-
-    if 'children' in node and node['children']:
-        new_node['children'] = []
-        for child_node in node['children']:
-            new_node['children'].append(transform_node_for_tree(child_node))
+    try:
+        from scripts.db_queries import search_users_by_fuzzy_term
+        results = search_users_by_fuzzy_term(DB_CONFIG, search_term)
+        
+        if results and len(results) > 0:
+            logging.info(f"找到 {len(results)} 个匹配的用户")
+            return jsonify({
+                "status": "success", 
+                "data": results,
+                "count": len(results)
+            })
+        else:
+            logging.warning(f"未找到匹配的用户: {search_term}")
+            return jsonify({
+                "status": "error", 
+                "message": f"未找到匹配 '{search_term}' 的用户信息"
+            }), 404
             
-    return new_node
-
-@app.route('/api/search', methods=['GET'])
-def handle_search():
-    """搜索指定地址的数据"""
-    search_term = request.args.get('query')
-    if not search_term:
-        return jsonify({"status": "error", "message": "缺少查询参数"}), 400
-
-    logging.info(f"收到查询请求: {search_term}")
-    file_path = os.path.join('data', f'{search_term}.json')
-
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                file_content = json.load(f)
-            logging.info(f"成功找到并返回文件: {file_path}")
-            return jsonify({ "status": "success", "data": file_content })
-        except Exception as e:
-            logging.error(f"读取文件时出错 {file_path}: {e}")
-            return jsonify({"status": "error", "message": "服务器内部错误"}), 500
-    else:
-        logging.warning(f"未找到数据文件: {file_path}")
-        return jsonify({ "status": "error", "message": f"未找到地址 '{search_term}' 对应的数据文件。" }), 404
-
-@app.route('/api/outline', methods=['GET'])
-def get_outline():
-    """获取数据大纲树形结构"""
-    search_term = request.args.get('query')
-    if not search_term:
-        return jsonify({"status": "error", "message": "缺少查询参数"}), 400
-
-    logging.info(f"收到大纲请求: {search_term}")
-    file_path = os.path.join('data', f'{search_term}.json')
-
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                full_data = json.load(f)
-
-            outline_tree = []
-            if 'children' in full_data and full_data['children']:
-                for top_level_node in full_data['children']:
-                    outline_tree.append(transform_node_for_tree(top_level_node))
-            
-            logging.info(f"成功生成嵌套大纲树: {file_path}")
-            return jsonify({ "status": "success", "data": outline_tree })
-        except Exception as e:
-            logging.error(f"处理大纲请求时出错 {file_path}: {e}")
-            return jsonify({"status": "error", "message": "服务器内部错误"}), 500
-    else:
-        logging.warning(f"未找到数据文件: {file_path}")
-        return jsonify({ "status": "error", "message": f"未找到地址 '{search_term}' 对应的数据文件。" }), 404
+    except Exception as e:
+        logging.error(f"模糊查找时出错: {e}")
+        return jsonify({"status": "error", "message": "服务器内部错误"}), 500
 
 @app.route('/api/upload', methods=['POST'])
 def handle_upload():

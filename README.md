@@ -1,3 +1,6 @@
+- 前端配置管理（暂定）
+
+
 # vue-bit-coin-platform
 
 This template should help get you started developing with Vue 3 in Vite.
