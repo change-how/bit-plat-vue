@@ -1,0 +1,105 @@
+{
+            "data": {
+              "text": "币安用户 78552133 调证数据"
+            },
+            "children": [
+              {
+                "data": { "text": "用户信息" },
+                "children": [
+                  { "data": { "text": "UID: 78552133" } },
+                  { "data": { "text": "用户名: satoshi_2015" } },
+                  { "data": { "text": "注册邮箱: s********5@protonmail.com" } },
+                  { "data": { "text": "注册手机号: +81 ****-****-8848" } },
+                  {
+                    "data": { "text": "身份认证 (KYC)" },
+                    "children": [
+                      { "data": { "text": "姓名: 张伟" } },
+                      { "data": { "text": "证件类型: 身份证" } },
+                      { "data": { "text": "证件号码: 310************419" } },
+                      { "data": { "text": "国籍: 中国" } },
+                      { "data": { "text": "认证级别: 已验证 Plus" } }
+                    ]
+                  }
+                ]
+              },
+              {
+                "data": { "text": "设备信息" },
+                "children": [
+                  {
+                    "data": { "text": "注册设备" },
+                    "children": [
+                      { "data": { "text": "注册IP: 118.238.213.75 (日本 东京)" } },
+                      { "data": { "text": "设备指纹: a9b8c7d6e5f4a3b2c1d0e9f8" } },
+                      { "data": { "text": "操作系统: Windows 10" } },
+                      { "data": { "text": "注册时间: 2021-08-15 14:30:22 (UTC)" } }
+                    ]
+                  },
+                  {
+                    "data": { "text": "常用设备列表" },
+                    "children": [
+                      { "data": { "text": "设备1: iPhone 14 Pro" } },
+                      { "data": { "text": "设备2: MacBook Pro M2" } }
+                    ]
+                  }
+                ]
+              },
+              {
+                "data": { "text": "交易信息" },
+                "children": [
+                  {
+                    "data": { "text": "充值记录" },
+                    "children": [
+                      { "data": { "text": "2025-07-20 11:05:14 | 存入 1.5 BTC | TxID: f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16" } },
+                      { "data": { "text": "2025-07-22 18:21:45 | 存入 25.3 ETH | TxID: 0x5e2a21a8d4522f3e891495a8a165b45f8c8b8c8d8e8f8g8h8i8j8k8l" } }
+                    ]
+                  },
+                  {
+                    "data": { "text": "提现记录" },
+                    "children": [
+                      { "data": { "text": "2025-07-21 09:33:01 | 提出 1.0 BTC 至 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa (高风险地址)" } },
+                      { "data": { "text": "2025-07-23 23:15:50 | 提出 10.0 ETH 至 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B (V神地址)" } }
+                    ]
+                  },
+                  {
+                    "data": { "text": "现货交易" },
+                    "children": [
+                      { "data": { "text": "2025-07-21 10:15:00 | 买入 BTC/USDT | 价格: 95000 | 数量: 0.5" } },
+                      { "data": { "text": "2025-07-22 19:00:30 | 卖出 ETH/USDT | 价格: 5200 | 数量: 15.0" } }
+                    ]
+                  },
+                  { "data": { "text": "内部转账: 2025-07-24 12:00:00 | 向UID 99014721 转出 10,000 USDT" } }
+                ]
+              },
+              {
+                "data": { "text": "登录信息" },
+                "children": [
+                  { "data": { "text": "2025-08-18 10:20:11 | 成功 | IP: 202.214.198.12 (日本 大阪) | 设备: MacBook Pro" } },
+                  { "data": { "text": "2025-08-17 21:55:43 | 成功 | IP: 210.138.109.5 (日本 东京) | 设备: iPhone 14 Pro" } },
+                  { "data": { "text": "2025-08-17 21:54:10 | 失败 (密码错误) | IP: 8.8.8.8 (美国 加州) | 设备: Unknown" } },
+                  { "data": { "text": "2025-08-15 08:10:05 | 成功 | IP: 210.138.109.5 (日本 东京) | 设备: iPhone 14 Pro" } }
+                ]
+              },
+              {
+                "data": { "text": "财产信息" },
+                "children": [
+                  {
+                    "data": { "text": "现货账户资产" },
+                    "children": [
+                      { "data": { "text": "BTC: 0.5012" } },
+                      { "data": { "text": "ETH: 10.35" } },
+                      { "data": { "text": "USDT: 157,832.55" } },
+                      { "data": { "text": "BNB: 8.21" } }
+                    ]
+                  },
+                  {
+                    "data": { "text": "合约账户资产" },
+                    "children": [
+                      { "data": { "text": "总余额: 50,000 USDT" } },
+                      { "data": { "text": "未实现盈亏: +2,310.40 USDT" } }
+                    ]
+                  },
+                  { "data": { "text": "总资产估值: ≈ 215,300.00 USD" } }
+                ]
+              }
+            ]
+          }

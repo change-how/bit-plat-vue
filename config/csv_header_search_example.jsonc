@@ -1,0 +1,84 @@
+// === CSV通过标题查找数据的配置示例 ===
+// 适用于CSV文件中数据不在固定行，而是需要通过标题文本来定位的情况
+{
+  "metadata": {
+    "source_name": "HeaderSearchExample",
+    "version": "1.0",
+    "description": "演示如何在CSV中通过标题查找数据表格"
+  },
+
+  "sources": [
+    // 方式1: 查找包含"交易记录"的标题，然后解析下面的表格数据
+    {
+      "source_id": "transaction_records",
+      "data_layout": "find_subtable_by_header",
+      "section_header_aliases": [
+        "交易记录",
+        "Transaction Records", 
+        "交易明细",
+        "转账记录"
+      ],
+      "header_offset": 1  // 找到标题后，表头在标题下第1行
+    },
+
+    // 方式2: 查找包含"用户信息"的标题，然后解析键值对数据
+    {
+      "source_id": "user_info",
+      "data_layout": "form_layout",
+      "section_header_aliases": [
+        "用户信息",
+        "User Information",
+        "账户详情",
+        "基本信息"
+      ],
+      "header_offset": 1
+    },
+
+    // 方式3: 查找包含"设备登录"的标题，然后解析表格
+    {
+      "source_id": "device_logins",
+      "data_layout": "find_subtable_by_header", 
+      "section_header_aliases": [
+        "设备登录记录",
+        "Device Login Records",
+        "登录日志",
+        "访问记录"
+      ],
+      "header_offset": 2  // 找到标题后，表头在标题下第2行（可能中间有空行）
+    },
+
+    // 方式4: 标准表格方式（如果您确定数据在第几行）
+    {
+      "source_id": "standard_table",
+      "data_layout": "tabular",
+      "header_row": 3  // 固定在第3行
+    }
+  ],
+
+  "destinations": [
+    {
+      "target_table": "asset_movements",
+      "primary_source": "transaction_records",  // 使用通过标题找到的交易记录
+      "mappings": [
+        { "target_field": "source", "static_value": "HeaderSearchExample" },
+        { "target_field": "user_id", "source_field_aliases": ["用户ID", "User ID", "账户"] },
+        { "target_field": "direction", "source_field_aliases": ["方向", "Direction", "类型"] },
+        { "target_field": "asset", "source_field_aliases": ["币种", "Asset", "资产"] },
+        { "target_field": "amount", "source_field_aliases": ["数量", "Amount", "金额"] },
+        { "target_field": "address", "source_field_aliases": ["地址", "Address", "钱包地址"] }
+      ]
+    },
+
+    {
+      "target_table": "login_logs",
+      "primary_source": "device_logins",  // 使用通过标题找到的登录记录
+      "mappings": [
+        { "target_field": "source", "static_value": "HeaderSearchExample" },
+        { "target_field": "user_id", "source_field_aliases": ["用户ID", "User ID"] },
+        { "target_field": "login_time", "source_field_aliases": ["登录时间", "Login Time"] },
+        { "target_field": "login_ip", "source_field_aliases": ["IP地址", "IP Address"] },
+        { "target_field": "device_id", "source_field_aliases": ["设备ID", "Device ID"] }
+      ]
+    }
+  ]
+}

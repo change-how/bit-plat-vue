@@ -1,0 +1,121 @@
+// === CSV 通用调证文件映射模板 v1.0 ===
+// 描述: 本模板展示如何为CSV文件配置4种不同的数据布局识别方法
+//       CSV文件不需要指定工作表名称，所有配置都基于CSV文件的行列结构
+{
+  "metadata": {
+    "source_name": "CSV_UNIVERSAL",
+    "version": "1.0",
+    "author": "spicy_rose",
+    "description": "通用CSV文件处理模板，支持4种数据布局"
+  },
+
+  // --- 1. 原材料清单 (Sources) ---
+  // 对于CSV文件，不需要指定worksheet_name，只需要指定数据布局类型
+  "sources": [
+    // 数据源1: 标准表格布局 (tabular)
+    // 适用于：标准的带表头的CSV表格
+    {
+      "source_id": "basic_transactions_raw",
+      "data_layout": "tabular",           // 标准表格
+      "header_row": 1                     // 第1行是表头
+    },
+
+    // 数据源2: 表单布局 (form_layout) 
+    // 适用于：键值对形式的用户信息
+    {
+      "source_id": "user_info_raw",
+      "data_layout": "form_layout",       // 表单布局
+      "section_header_aliases": [          // 寻找这些标题来定位表单区域
+        "用户基本信息",
+        "User Information", 
+        "Basic Info"
+      ],
+      "header_offset": 1                   // 表头在标题下方1行
+    },
+
+    // 数据源3: 动态子表 (find_subtable_by_header)
+    // 适用于：CSV中包含多个数据区域，需要找到特定标题下的表格
+    {
+      "source_id": "transaction_history_raw",
+      "data_layout": "find_subtable_by_header",  // 动态查找子表
+      "section_header_aliases": [                 // 可能的子表标题
+        "交易记录",
+        "Transaction History",
+        "Trade Records"
+      ],
+      "header_offset": 1                         // 实际表头在标题下方1行
+    },
+
+    // 数据源4: 复杂三维表 (merged_key_value)
+    // 适用于：包含合并单元格和键值对的复杂表格
+    {
+      "source_id": "device_info_raw",
+      "data_layout": "merged_key_value",    // 复杂三维表
+      "header_row": 1,                      // 表头行位置
+      "merged_columns": [                   // 需要向下填充的合并列
+        "设备名称",
+        "设备类型", 
+        "最后使用时间"
+      ],
+      "key_column": "属性名称",              // 键列名
+      "value_column": "属性值"               // 值列名
+    }
+  ],
+
+  // --- 2. 生产线清单 (Destinations) ---
+  "destinations": [
+    // 生产线1: 处理用户信息表单数据
+    {
+      "target_table": "users",
+      "primary_source": "user_info_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "CSV_FILE" },
+        { "target_field": "user_id", "source_field_aliases": ["用户ID", "User ID", "UID"] },
+        { "target_field": "name", "source_field_aliases": ["姓名", "Name", "用户名"] },
+        { "target_field": "phone_number", "source_field_aliases": ["手机号", "Phone", "电话"] },
+        { "target_field": "email", "source_field_aliases": ["邮箱", "Email", "电子邮件"] }
+      ]
+    },
+
+    // 生产线2: 处理标准交易表格数据
+    {
+      "target_table": "transactions",
+      "primary_source": "basic_transactions_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "CSV_FILE" },
+        { "target_field": "user_id", "source_field_aliases": ["用户ID", "User ID", "UID"] },
+        { "target_field": "transaction_id", "source_field_aliases": ["交易ID", "Transaction ID", "订单号"] },
+        { "target_field": "amount", "source_field_aliases": ["金额", "Amount", "数量"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "currency", "source_field_aliases": ["币种", "Currency", "货币"] },
+        { "target_field": "transaction_time", "source_field_aliases": ["交易时间", "Time", "时间戳"], "transformations": [{"function": "parse_universal_datetime"}] }
+      ]
+    },
+
+    // 生产线3: 处理动态子表数据  
+    {
+      "target_table": "asset_movements",
+      "primary_source": "transaction_history_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "CSV_FILE" },
+        { "target_field": "user_id", "source_field_aliases": ["用户ID", "User ID"] },
+        { "target_field": "asset_type", "source_field_aliases": ["资产类型", "Asset Type", "币种"] },
+        { "target_field": "movement_type", "source_field_aliases": ["操作类型", "Type", "类型"] },
+        { "target_field": "amount", "source_field_aliases": ["数量", "Amount", "金额"], "transformations": [{"function": "string_to_decimal"}] }
+      ]
+    },
+
+    // 生产线4: 处理复杂设备信息数据
+    {
+      "target_table": "devices", 
+      "primary_source": "device_info_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "CSV_FILE" },
+        { "target_field": "device_name", "source_field_aliases": ["设备名称", "Device Name"] },
+        { "target_field": "device_type", "source_field_aliases": ["设备类型", "Device Type"] },
+        { "target_field": "last_used", "source_field_aliases": ["最后使用时间", "Last Used"], "transformations": [{"function": "parse_universal_datetime"}] },
+        // extra_data 字段用于存储键值对数据
+        { "target_field": "device_details", "source_field_aliases": ["extra_data"], "in_extra": true }
+      ]
+    }
+  ]
+}

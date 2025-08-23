@@ -7,12 +7,14 @@
         <h2>大纲目录</h2>
       </div>
       <div class="sidebar-content">
-        <div v-if="isOutlineLoading">正在加载大纲...</div>
-        <div v-else-if="outlineError">加载失败: {{ outlineError }}</div>
+        <div v-if="isMindMapLoading ">正在加载大纲...</div>
+        <div v-else-if="mindMapError">加载失败: {{ outlineError }}</div>
         <outlinetree
           v-else
           :data="outlineData"      
           :props="defaultProps"
+          node-key="id"
+          :default-expanded-keys="[1]"
         />
       </div>
     </aside>
@@ -21,11 +23,12 @@
       <div class="main-content-header">
         <h3>数据图谱: {{ queryAddress }}</h3>
       </div>
-      <div v-if="isLoading" class="detail-panel-placeholder">正在加载图谱...</div>
-      <div v-else-if="error" class="detail-panel-placeholder" style="color: #ff4d4f;">
+      <div v-if="isMindMapLoading" class="detail-panel-placeholder">正在加载图谱...</div>
+      <div v-else-if="mindMapError" class="detail-panel-placeholder" style="color: #ff4d4f;">
         <p>查询失败: {{ error }}</p>
       </div>
-      <GraphDisplay v-else-if="graphData" :graphData="graphData" />
+      <div v-else id="mindMapContainer"></div>
+      <!-- <GraphDisplay v-else-if="graphData" :graphData="mindMapData" /> -->
     </main>
 
     <aside class="sidebar-right">
@@ -61,93 +64,105 @@
 
 <script setup>
 
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed,nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import GraphDisplay from '../components/GraphDisplay.vue'; // 导入我们刚创建的图谱组件
 import outlinetree from '../components/outlinetree.vue'
 import ELtable from '../components/ELtable.vue'; // 导入我们刚创建的图谱组件
+import MindMap from "simple-mind-map";
+import data_test from '../../data/data_mindmap.json'; // 导入测试数据
 
-//脑图数据容器
-const graphData = ref(null); // 用于存放从后端成功获取的图谱数据
-const error = ref(null);     // 用于存放射区失败时的错误信息
-const isLoading = ref(true); // 用于控制是否显示“加载中”的状态
+//计算大纲的函数
+function extractNonLeafNodes(mindMapData) {
+  // 定义一个内部递归函数，用于处理每个节点
+  // 使用一个计数器来为每个节点生成唯一的ID，这在UI渲染中很有用
+  let idCounter = 0;
 
-//大纲数据容器
-const outlineData = ref([]); // 准备一个空数组，作为装大纲列表的盘子
-const isOutlineLoading = ref(true); // 准备一个布尔值，作为“正在加载”的标志，默认为 true
-const outlineError = ref(null);     // 准备一个空值，作为装错误信息的盘子
+  function recursiveTransform(node) {
+    // 检查当前节点是否是非叶子节点。
+    // 判断条件是：节点有 children 属性，该属性是数组，且数组不为空。
+    const isNonLeaf = node && Array.isArray(node.children) && node.children.length > 0;
+
+    // 如果不是非叶子节点（即叶子节点或空节点），则直接返回 null，表示在结果中舍弃它。
+    if (!isNonLeaf) {
+      return null;
+    }
+
+    // 如果是，则开始转换...
+    // 1. 递归处理所有子节点
+    const transformedChildren = node.children
+      .map(child => recursiveTransform(child)) // 对每个子节点调用自身
+      .filter(Boolean); // 关键一步：过滤掉所有返回 null 的结果（即所有叶子节点）
+
+    // 2. 构建并返回符合新格式的节点对象
+    return {
+      id: ++idCounter, // 分配一个唯一的ID
+      label: node.data.text, // 将 "data.text" 映射为 "label"
+      children: transformedChildren, // 使用处理过的子节点数组
+    };
+  }
+
+  // 从根节点开始执行转换
+  const result = recursiveTransform(mindMapData);
+
+  // 因为UI组件通常接收一个数组，而我们的转换结果是单个根节点对象，
+  // 所以最后把它包裹在一个数组里返回。如果根节点本身就是叶子节点，结果会是 [null]，需要处理一下。
+  return result ? [result] : [];
+}
+
+// 数据库直连数据容器 (新)
+const mindMapData = ref(null); // 用于存放从新接口获取的数据
+const mindMapError = ref(null); // 新接口的错误信息
+const isMindMapLoading = ref(true); // 新接口的加载状态
 
 // 2. 获取路由参数
 const route = useRoute();              // 获取当前路由信息对象
 const queryAddress = route.params.query; // 从 URL 中拿到查询地址 (例如 /results/xxx 中的 xxx)
-
-// 3. 数据获取逻辑
-// onMounted 会在组件挂载到页面后自动执行，是执行初始化数据请求的最佳位置
-onMounted(async () => {
-//1. 调用知识图谱的api
+const outlineData = extractNonLeafNodes(data_test);
+onMounted(
+  async function(){
     //try部分成功完成了从接口获取数据
-  try {
-    // 调用你原来 app.py 中定义的后端 API获取虚拟币数据
-    const response = await fetch(`http://127.0.0.1:5000/api/search?query=${encodeURIComponent(queryAddress)}`);
-    //检查是否成功返回
-    if (!response.ok) {
-      // 如果服务器返回非 2xx 状态码，也视为错误
-      const errData = await response.json();
-      throw new Error(errData.message || '服务器响应错误');
-    }
-    //检查内部内容是否成功
-    const result = await response.json();
-    if (result.status === 'success') {
-      graphData.value = result.data; // 成功了！将获取到的数据存入响应式变量
-    } else {
-      throw new Error(result.message);
-    }
-  } catch (err) {//下面这两部分都是错误检查员
-    console.error('加载数据失败:', err);
-    error.value = err.message; // 捕获任何错误，并存入 error 变量
-  } finally {
-    // 无论成功还是失败，最终都要结束加载状态
-    isLoading.value = false;
-  }
-
-  
-//2. 调用获取大纲的api
-  try {
-      const outlineResponse = await fetch(`http://127.0.0.1:5000/api/outline?query=${encodeURIComponent(queryAddress)}`);
-      if (!outlineResponse.ok) {
-        // 如果不成功，就构造一个错误抛出，它会被下面的 catch 接住
-        throw new Error('服务器响应错误');
+    try {
+      const mindMapResponse  = await fetch(`http://127.0.0.1:5000/api/mindmap_data?user_id=${encodeURIComponent(queryAddress)}`);
+      //1、错误处理-是否成功得到响应
+      if (!mindMapResponse.ok) {
+        const errData = await mindMapResponse.json();
+        throw new Error(errData.message || '服务器响应错误');
       }
-      // ✨ 新增：将返回的 JSON 字符串解析成 JS 对象
-      const outlineResult = await outlineResponse.json();
-      // ✨ 新增：检查业务状态是否成功
-      if (outlineResult.status === 'success') {
-        // ✨ 最关键的一步：把“菜”（数据）装入“盘子”（响应式变量）
-        outlineData.value = outlineResult.data;
+      // const result = await response.json();
+
+      const mindMapResult = await mindMapResponse.json();
+      
+      if (mindMapResult.status === 'success') {
+        mindMapData.value = mindMapResult.data;
+        isMindMapLoading.value = false;
+        await nextTick();
+        console.log('数据拿到了')
+        mindMapData.value = data_test;//首先测试绘图功能，暂时依然是静态数据，之后删掉这一行即可
+        const mindMap = new MindMap({
+          layout: 'mindMap',
+          el: document.getElementById('mindMapContainer'),
+          "data": mindMapData.value
+        });        
       } else {
-        // 如果业务失败，也抛出一个错误
-        throw new Error(outlineResult.message);
+        throw new Error(mindMapResult.message);
       }
-    } catch (err) {
-      // 如果请求失败（比如网络不通），把错误信息装入盘子
-      outlineError.value = err.message;
+
+    } catch (err) {//下面这两部分都是错误检查员
+      console.error('加载数据失败:(123)', err);
+      isMindMapLoading.value = false;
+      error.value = err.message; // 捕获任何错误，并存入 error 变量
     } finally {
-      // 无论成功还是失败，加载过程都结束了，关掉“正在加载”的开关
-      isOutlineLoading.value = false;
+      // 无论成功还是失败，最终都要结束加载状态
+      isMindMapLoading.value = false;
     }
-});
 
-// 4. 计算属性 (用于动态生成侧边栏内容)
-// computed 会根据依赖的 ref 自动计算并缓存结果，非常高效
-const directoryList = computed(() => {
-  return (graphData.value && graphData.value.children) ? graphData.value.children : [];
-});
 
-const detailPanelData = computed(() => {
-  if (graphData.value) {
-    return (graphData.value.children && graphData.value.children.length > 0) ? graphData.value.children : [graphData.value];
-  }
-  return [];
+// 3. 打印结果
+console.log(JSON.stringify(outlineData, null, 2));
+
+
+
 });
 
 
@@ -190,5 +205,18 @@ const tableData = [
   },
 ]
 
-
 </script>
+<style scoped>
+.main-content {
+  display: flex;
+  flex-direction: column;
+  /* 如果外层 page-wrapper 已经控制了高度，可能不需要下面这行 */
+  /* 但加上它可以确保在各种情况下，main-content 都占满整个视口高度 */
+  height: 100vh; 
+}
+#mindMapContainer {
+  flex-grow: 1; /* 告诉它，占据父容器里所有剩余的垂直空间 */
+  width: 100%; /* 宽度占满 */
+}
+
+</style>

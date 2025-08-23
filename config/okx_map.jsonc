@@ -5,13 +5,25 @@
   "metadata": {
     "source_name": "OKX",
     "version": "7.0",
-    "author": "Gemini Assistant & Your Name"
+    "author": "spicy_rose",
+    "display_name": "OKX 完整版调证模板",
+    "description": "包含所有7个工作表的完整版本"
   },
 
   // --- 1. 原材料清单 (Sources) ---
   // 定义了需要从Excel中提取的所有核心工作表。
   "sources": [
-    { "source_id": "user_info_raw", "worksheet_name": "用户信息", "header_row": 1 },
+    {//这段代码其实还是动态表单，但是巧妙地处理了标准表单的格式
+      "source_id": "user_info_raw",
+      "worksheet_name": "用户信息",
+      
+      // --- 核心调整：明确告诉程序，这是一个“表单” ---
+      "data_layout": "form_layout",
+      // --- 新增定位参数，让提取更健壮 ---
+      "section_header_aliases": ["uuid", "姓名"], // 用表头里的唯一字段当“路标”
+      "header_offset": 0 // 表头行就是“路标”行本身，所以偏移量是0
+    },
+    //{ "source_id": "user_info_raw", "worksheet_name": "用户信息", "header_row": 1 },
     { "source_id": "fiat_trade_raw", "worksheet_name": "法币交易记录", "header_row": 1 },
     { "source_id": "deposit_raw", "worksheet_name": "充币记录", "header_row": 1 },
     { "source_id": "withdrawal_raw", "worksheet_name": "提币记录", "header_row": 1 },
@@ -111,22 +123,7 @@
           { "target_field": "device_id", "source_field_aliases": ["设备id"] }
           // 注意：OKX的设备信息非常简单，没有客户端类型、IP等信息，数据库将自动为这些列填充NULL
         ]
-    },
-
-    // --- 生产线 #6: 写入 'asset_ledgers' (统一资产流水表) ---
-    {
-      "target_table": "asset_ledgers",
-      "primary_source": "asset_history_raw",
-      "mappings": [
-        { "target_field": "source", "static_value": "OKX" },
-        { "target_field": "user_id", "lookup_source": "user_info_raw", "source_field_aliases": ["uuid"] },
-        // 注意：OKX的这份账单没有独立的流水ID，record_id将为空
-        { "target_field": "record_time", "source_field_aliases": ["账单时间"], "transformations": [{"function": "parse_universal_datetime"}] },
-        { "target_field": "asset", "source_field_aliases": ["币种"] },
-        { "target_field": "change_type", "source_field_aliases": ["类型"] },
-        { "target_field": "change_amount", "source_field_aliases": ["币的数量"], "transformations": [{"function": "string_to_decimal"}] },
-        { "target_field": "balance_after", "source_field_aliases": ["之后的余额"], "transformations": [{"function": "string_to_decimal"}] }
-      ]
     }
+    
   ]
 }

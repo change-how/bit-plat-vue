@@ -1,0 +1,73 @@
+{
+  // 火币交易所数据映射配置
+  "platform": "huobi",
+  "description": "火币交易所数据处理模板",
+  "version": "1.0",
+  
+  "sources": [
+    {
+      "name": "huobi_transactions",
+      "type": "excel_sheet",
+      "sheet_name": "交易记录",
+      "header_row": 0,
+      "required_columns": ["时间", "交易对", "方向", "成交均价", "成交数量", "成交金额", "手续费"]
+    }
+  ],
+  
+  "destinations": [
+    {
+      "target_table": "transactions",
+      "source": "huobi_transactions",
+      "field_mapping": [
+        {
+          "target_field": "transaction_time",
+          "source_field": "时间",
+          "transform_function": "parse_universal_datetime"
+        },
+        {
+          "target_field": "symbol",
+          "source_field": "交易对"
+        },
+        {
+          "target_field": "side",
+          "source_field": "方向",
+          "transform_function": "map_buy_sell"
+        },
+        {
+          "target_field": "price",
+          "source_field": "成交均价",
+          "transform_function": "string_to_decimal"
+        },
+        {
+          "target_field": "quantity",
+          "source_field": "成交数量",
+          "transform_function": "string_to_decimal"
+        },
+        {
+          "target_field": "amount",
+          "source_field": "成交金额",
+          "transform_function": "string_to_decimal"
+        },
+        {
+          "target_field": "fee",
+          "source_field": "手续费",
+          "transform_function": "string_to_decimal"
+        },
+        {
+          "target_field": "base_asset",
+          "source_field": "交易对",
+          "transform_function": "extract_base_asset"
+        },
+        {
+          "target_field": "quote_asset", 
+          "source_field": "交易对",
+          "transform_function": "extract_quote_asset"
+        },
+        {
+          "target_field": "source_file_name",
+          "source_field": "filename_placeholder"
+        }
+      ]
+    }
+  ]
+}

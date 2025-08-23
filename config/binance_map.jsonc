@@ -1,24 +1,27 @@
 // === Binance 调证文件映射模板 v8.0 (精简核心 + 充提合并版) ===
 // 描述: 本模板将充值与提现记录，智能地合并到一张统一的 asset_movements 表中。
+//如果想放在后面，请加"in_extra": true字段
 {
   "metadata": {
     "source_name": "Binance",
     "version": "8.0",
-    "author": "Gemini Assistant & Your Name"
+    "author": "spicy_rose"
   },
 
   // --- 1. 原材料清单 (Sources) ---
   // (这部分保持不变，我们仍然需要提取充值和提现这两个独立的工作表)
   "sources": [
     {
-      "source_id": "user_basic_info_raw",
-      "worksheet_name": "Customer Information 客户信息",
-      
-      // --- 核心改动：使用新的、更精确的布局指令 ---
-      "data_layout": "form_layout", // <-- 从 find_subtable_by_header 改为 form_layout
-
-      "section_header": "Basic Information 基本信息",
-      "header_offset": 1
+      "source_id": "user_basic_info_raw", // 给这份“档案”原材料起个名字
+      "worksheet_name": "Customer Information 客户信息",      // 搜索型的模板
+      "data_layout": "form_layout",     // 明确告诉程序：这是一个“表单”！
+      "section_header_aliases": [
+        "测试字段1",
+        "User Basic Information 用户基本信息", // 备选路标1 (当前格式)
+        "Basic Information 基本信息",        // 备选路标2 (未来可能的简化格式)
+        "测试字段3"
+      ],
+      "header_offset": 1                  // 告诉程序，表头在大标题下方1行
     },
     { "source_id": "spot_trade_raw", "worksheet_name": "Order History 现货订单记录", "header_row": 1 },
     { "source_id": "p2p_trade_raw", "worksheet_name": "P2P 法币交易", "header_row": 1 },
@@ -28,24 +31,53 @@
     { "source_id": "deposit_raw", "worksheet_name": "Deposit History 充值记录", "header_row": 1 },
     { "source_id": "withdrawal_raw", "worksheet_name": "Withdrawal History 提现记录", "header_row": 1 },
     { "source_id": "login_info_raw", "worksheet_name": "Access Logs 登陆日志", "header_row": 1 },
-    { "source_id": "device_info_raw", "worksheet_name": "Approved Devices 支持设备", "header_row": 1 },
+    {
+    "source_id": "device_info_raw",
+    "worksheet_name": "Approved Devices 支持设备",
+    "data_layout": "merged_key_value", // 告诉程序，这是最复杂的合并单元格+键值对模式
+    // --- 指令参数 ---
+    "header_row": 1, // 表头在第1行
+    // 告诉程序，哪些列是需要“向下填充”的合并单元格列
+    "merged_columns": [
+      "Device Name 设备名称",
+      "Client 客户端",
+      "IP Address IP地址",
+      "Geolocation 地理位置",
+      "Recent Usage Timestamp (UTC) 最近使用时间戳（UTC）",
+      "Status 状态"
+    ],
+    // 告诉程序，哪两列是我们要收集的键值对
+    "key_column": "Key 程序键",
+    "value_column": "Value 键值"
+    },
+    //{ "source_id": "device_info_raw", "worksheet_name": "Approved Devices 支持设备", "header_row": 1 },
     { "source_id": "spot_ledger_raw", "worksheet_name": "Spot Asset Log 现货账户持仓变动", "header_row": 1 },
-    { "source_id": "funding_ledger_raw", "worksheet_name": "Funding Asset Log 资金账户持仓变动", "header_row": 1 }
+    { "source_id": "funding_ledger_raw", "worksheet_name": "Funding Asset Log 资金账户持仓变动", "header_row": 1 },
+    {
+    "source_id": "asset_snapshot_raw",
+    "worksheet_name": "Assets Overview 资产预览",
+    
+    // --- 关键指令：告诉程序这是一个多行的动态子表 ---
+    "data_layout": "find_subtable_by_header",
+
+    "section_header_aliases": ["Futures USDT balance U本位合约余额"], // 子表的“大标题”
+    "header_offset": 1 // 表头在大标题下方1行
+    }
   ],
 
   // --- 2. 生产线清单 (Destinations) ---
   "destinations": [
-    // --- Users, Transactions, Login_logs, Devices, Asset_ledgers 表的生产线 (保持不变) ---
+    // --- Users, Transactions, Login_logs, Devices 表的生产线 (保持不变) ---
     {
       "target_table": "users",
       "primary_source": "user_basic_info_raw",
       "mappings": [
         { "target_field": "source", "static_value": "Binance" },
         { "target_field": "user_id", "source_field_aliases": ["User ID 用户ID"] },
-        { "target_field": "name", "source_field_aliases": ["注册姓名 Name"] },
-        { "target_field": "registration_time", "source_field_aliases": ["注册时间 Registration Time(UTC)"], "transformations": [{"function": "parse_universal_datetime"}] },
-        { "target_field": "phone_number", "source_field_aliases": ["注册手机号 Phone"] },
-        { "target_field": "email", "source_field_aliases": ["注册邮箱 Email"] }
+        { "target_field": "name", "source_field_aliases": ["First Name 名"] },
+        { "target_field": "registration_time", "source_field_aliases": ["注册时间 Registration Time(UTC)","User authentication time 账户验证时间"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "phone_number", "source_field_aliases": ["Mobile 手机号码"] },
+        { "target_field": "email", "source_field_aliases": ["注册邮箱 Email","Email 邮箱地址"] }
       ]
     },
     {
@@ -121,7 +153,7 @@
       ]
     },
 
-    // --- Login_logs, Devices, Asset_ledgers 表的生产线 (保持不变) ---
+    // --- Login_logs, Devices 表的生产线 (保持不变) ---
     {
       "target_table": "login_logs",
       "primary_source": "login_info_raw",
@@ -142,34 +174,6 @@
         { "target_field": "client_type", "source_field_aliases": ["Client 客户端"] },
         { "target_field": "ip_address", "source_field_aliases": ["IP Address IP地址"] },
         { "target_field": "add_time", "source_field_aliases": ["Recent Usage Timestamp (UTC) 最近使用时间戳（UTC）"], "transformations": [{"function": "parse_universal_datetime"}] }
-      ]
-    },
-    {
-      "target_table": "asset_ledgers",
-      "primary_source": "spot_ledger_raw",
-      "mappings": [
-        { "target_field": "source", "static_value": "Binance" },
-        { "target_field": "user_id", "source_field_aliases": ["User ID 用户ID"] },
-        { "target_field": "record_id", "source_field_aliases": ["Order Number 流水单号"] },
-        { "target_field": "record_time", "source_field_aliases": ["Time 时间"], "transformations": [{"function": "parse_universal_datetime"}] },
-        { "target_field": "asset", "source_field_aliases": ["Currency 币种"] },
-        { "target_field": "change_type", "source_field_aliases": ["Type 类型"] },
-        { "target_field": "change_amount", "source_field_aliases": ["Amount 数额"], "transformations": [{"function": "string_to_decimal"}] },
-        { "target_field": "balance_after", "source_field_aliases": ["Available 可用数额"], "transformations": [{"function": "string_to_decimal"}] }
-      ]
-    },
-    {
-      "target_table": "asset_ledgers",
-      "primary_source": "funding_ledger_raw",
-      "mappings": [
-        { "target_field": "source", "static_value": "Binance" },
-        { "target_field": "user_id", "source_field_aliases": ["User ID 用户ID"] },
-        { "target_field": "record_id", "source_field_aliases": ["Order Number 流水单号"] },
-        { "target_field": "record_time", "source_field_aliases": ["Time 时间"], "transformations": [{"function": "parse_universal_datetime"}] },
-        { "target_field": "asset", "source_field_aliases": ["Currency 币种"] },
-        { "target_field": "change_type", "source_field_aliases": ["Type 类型"] },
-        { "target_field": "change_amount", "source_field_aliases": ["Amount 数额"], "transformations": [{"function": "string_to_decimal"}] },
-        { "target_field": "balance_after", "source_field_aliases": ["Available 可用数额"], "transformations": [{"function": "string_to_decimal"}] }
       ]
     }
   ]

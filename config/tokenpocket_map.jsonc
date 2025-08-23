@@ -1,0 +1,62 @@
+// === TokenPocket CSV调证文件映射模板 ===
+// 使用通过标题查找的方式，动态定位表头位置
+{
+  "metadata": {
+    "source_name": "TokenPocket",
+    "version": "1.0",
+    "author": "spicy_rose",
+    "description": "TokenPocket钱包CSV调证数据处理模板，使用标题查找方式"
+  },
+
+  // --- 1. 原材料清单 (Sources) ---
+  "sources": [
+    {
+      "source_id": "tokenpocket_login_logs",
+      "data_layout": "find_subtable_by_header",    // 通过标题查找方式
+      "section_header_aliases": [
+        "wallet_address",                           // 查找包含wallet_address的行
+        "create_time",                              // 或包含create_time的行
+        "user-agent"                                // 或包含user-agent的行
+      ],
+      "header_offset": 0                            // 找到标题后，表头偏移量为0（就在当前行）
+    }
+  ],
+
+  // --- 2. 生产线清单 (Destinations) ---
+  "destinations": [
+    // 生产线1: 写入 'login_logs' (登录信息表)
+    {
+      "target_table": "login_logs",
+      "primary_source": "tokenpocket_login_logs",
+      "mappings": [
+        { "target_field": "source", "static_value": "TokenPocket" },
+        { "target_field": "user_id", "source_field_aliases": ["wallet_address"] },
+        { "target_field": "login_time", "source_field_aliases": ["create_time"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "login_ip", "source_field_aliases": ["ip"] },
+        { "target_field": "device_id", "source_field_aliases": ["wallet_address"] },  // 使用钱包地址作为设备标识
+        // 将额外信息存入extra_data
+        { "target_field": "user_agent", "source_field_aliases": ["user-agent"], "in_extra": true },
+        { "target_field": "port", "source_field_aliases": ["port"], "in_extra": true },
+        { "target_field": "wallet_type", "source_field_aliases": ["wallet_type"], "in_extra": true }
+      ]
+    },
+
+    // 生产线2: 写入 'devices' (设备信息表)  
+    {
+      "target_table": "devices",
+      "primary_source": "tokenpocket_login_logs",
+      "mappings": [
+        { "target_field": "source", "static_value": "TokenPocket" },
+        { "target_field": "user_id", "source_field_aliases": ["wallet_address"] },
+        { "target_field": "device_id", "source_field_aliases": ["wallet_address"] },
+        { "target_field": "client_type", "static_value": "TokenPocket" },
+        { "target_field": "ip_address", "source_field_aliases": ["ip"] },
+        { "target_field": "add_time", "source_field_aliases": ["create_time"], "transformations": [{"function": "parse_universal_datetime"}] },
+        // 将设备详情存入extra_data
+        { "target_field": "user_agent", "source_field_aliases": ["user-agent"], "in_extra": true },
+        { "target_field": "port", "source_field_aliases": ["port"], "in_extra": true },
+        { "target_field": "wallet_type", "source_field_aliases": ["wallet_type"], "in_extra": true }
+      ]
+    }
+  ]
+}

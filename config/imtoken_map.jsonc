@@ -1,0 +1,102 @@
+// === ImToken CSV调证文件映射模板 v2.0 ===
+// 描述: 根据数据库字段说明修正的ImToken模板，确保字段名完全匹配
+{
+  "metadata": {
+    "source_name": "ImToken",
+    "version": "2.0",
+    "author": "spicy_rose",
+    "display_name": "ImToken 钱包标准版",
+    "description": "ImToken钱包CSV调证数据处理模板，字段名已匹配数据库结构"
+  },
+
+  // --- 1. 原材料清单 (Sources) ---
+  "sources": [
+    {
+      "source_id": "wallet_activities_raw",
+      "data_layout": "tabular",        // 标准CSV表格布局
+      "header_row": 1                  // 第1行是表头
+    }
+  ],
+
+  // --- 2. 生产线清单 (Destinations) ---
+  "destinations": [
+    // 生产线1: 写入 'users' (用户信息表)
+    // 对应字段: source_file_name, source, user_id, name, registration_time, phone_number, email
+    {
+      "target_table": "users",
+      "primary_source": "wallet_activities_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "ImToken" },
+        { "target_field": "user_id", "source_field_aliases": ["device_token"] },
+        { "target_field": "registration_time", "source_field_aliases": ["client_created_at"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "name", "static_value": null },
+        { "target_field": "phone_number", "static_value": null },
+        { "target_field": "email", "static_value": null }
+      ]
+    },
+
+    // 生产线2: 写入 'login_logs' (登录信息表)
+    // 对应字段: source_file_name, source, user_id, login_time, login_ip, device_id, extra_data
+    {
+      "target_table": "login_logs",
+      "primary_source": "wallet_activities_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "ImToken" },
+        { "target_field": "user_id", "source_field_aliases": ["device_token"] },
+        { "target_field": "login_time", "source_field_aliases": ["created_at"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "login_ip", "source_field_aliases": ["ip"] },
+        { "target_field": "device_id", "source_field_aliases": ["device_token"] },
+        // 将操作详情存入extra_data
+        { "target_field": "operation_type", "source_field_aliases": ["source"], "in_extra": true },
+        { "target_field": "blockchain_involved", "source_field_aliases": ["chain"], "in_extra": true },
+        { "target_field": "wallet_address", "source_field_aliases": ["wallet_address"], "in_extra": true },
+        { "target_field": "client_version", "source_field_aliases": ["client_version"], "in_extra": true },
+        { "target_field": "device_info", "source_field_aliases": ["device_brief_compatible"], "in_extra": true }
+      ]
+    },
+
+    // 生产线3: 写入 'devices' (设备信息表)
+    // 对应字段: source_file_name, source, user_id, device_id, client_type, ip_address, add_time, extra_data
+    {
+      "target_table": "devices",
+      "primary_source": "wallet_activities_raw", 
+      "mappings": [
+        { "target_field": "source", "static_value": "ImToken" },
+        { "target_field": "user_id", "source_field_aliases": ["device_token"] },
+        { "target_field": "device_id", "source_field_aliases": ["device_token"] },
+        { "target_field": "client_type", "source_field_aliases": ["device_platform_os_version"] },
+        { "target_field": "ip_address", "source_field_aliases": ["ip"] },
+        { "target_field": "add_time", "source_field_aliases": ["client_created_at"], "transformations": [{"function": "parse_universal_datetime"}] },
+        // 将额外信息存入extra_data（三维表数据）
+        { "target_field": "client_version", "source_field_aliases": ["client_version"], "in_extra": true },
+        { "target_field": "device_brief", "source_field_aliases": ["device_brief_compatible"], "in_extra": true },
+        { "target_field": "platform_details", "source_field_aliases": ["device_platform_os_version"], "in_extra": true },
+        { "target_field": "chain_activity", "source_field_aliases": ["chain"], "in_extra": true },
+        { "target_field": "wallet_address", "source_field_aliases": ["wallet_address"], "in_extra": true }
+      ]
+    },
+
+    // 生产线4: 写入 'asset_movements' (充提记录表)
+    // 对应字段: source_file_name, source, user_id, direction, asset, quantity, address, txid, network, transaction_time, status, extra_data
+    {
+      "target_table": "asset_movements", 
+      "primary_source": "wallet_activities_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "ImToken" },
+        { "target_field": "user_id", "source_field_aliases": ["device_token"] },
+        { "target_field": "direction", "static_value": "WALLET_OPERATION" },  // ImToken主要是钱包操作
+        { "target_field": "asset", "static_value": "WALLET" },
+        { "target_field": "quantity", "static_value": 1 },
+        { "target_field": "address", "source_field_aliases": ["wallet_address"] },
+        { "target_field": "txid", "static_value": null },
+        { "target_field": "network", "source_field_aliases": ["chain"] },
+        { "target_field": "transaction_time", "source_field_aliases": ["created_at"], "transformations": [{"function": "parse_universal_datetime"}] },
+        { "target_field": "status", "static_value": "COMPLETED" },
+        // 将操作类型等详情存入extra_data
+        { "target_field": "operation_type", "source_field_aliases": ["source"], "in_extra": true },
+        { "target_field": "device_token", "source_field_aliases": ["device_token"], "in_extra": true },
+        { "target_field": "client_created_at", "source_field_aliases": ["client_created_at"], "in_extra": true }
+      ]
+    }
+  ]
+}

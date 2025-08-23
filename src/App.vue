@@ -27,6 +27,7 @@
 
 <script setup>
   // ✨✨✨ 导入 useRouter 和 useRoute 钩子 ✨✨✨
+  import { AddLocation } from '@element-plus/icons-vue';
   import { useRoute } from 'vue-router';
   const currentRoute = useRoute();
 
@@ -40,17 +41,19 @@
   flex-direction: column;
   min-height: 100vh;
   width: 100%;
-  height:100%;
+  min-height: 100vh
 }
 header {
   display: flex;
   background-color: rgba(174, 153, 253, 0.7);
   align-items: center;
-  height:10%;
+  height: 60px;
   text-align: center;
   justify-content:space-between;;
   /* opacity:90%; */
   padding: 0 24px;
+  flex-shrink: 0;
+  
 }
 .logo-title-container {
   display: flex; /* 使用 flex 布局 */

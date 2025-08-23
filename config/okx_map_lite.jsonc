@@ -1,0 +1,63 @@
+// === OKX 调证文件映射模板 v8.0 (简化版) ===
+// 描述: 只需要核心的3个工作表，适用于简化的OKX数据文件
+{
+  "metadata": {
+    "source_name": "OKX",
+    "version": "8.0-lite",
+    "author": "system",
+    "display_name": "OKX 简化版调证模板",
+    "description": "仅需3个核心工作表的简化版本"
+  },
+
+  // --- 1. 原材料清单 (Sources) - 简化版 ---
+  "sources": [
+    {
+      "source_id": "user_info_raw",
+      "worksheet_name": "用户信息",
+      "data_layout": "form_layout",
+      "section_header_aliases": ["uuid", "姓名"],
+      "header_offset": 0
+    },
+    { "source_id": "deposit_raw", "worksheet_name": "充币记录", "header_row": 1 },
+    { "source_id": "withdrawal_raw", "worksheet_name": "提币记录", "header_row": 1 }
+  ],
+
+  // --- 2. 生产线清单 (Destinations) - 简化版 ---
+  "destinations": [
+    {
+      "target_table": "users",
+      "primary_source": "user_info_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "source_field_aliases": ["uuid"] },
+        { "target_field": "name", "source_field_aliases": ["姓名"] },
+        { "target_field": "phone_number", "source_field_aliases": ["手机号"] },
+        { "target_field": "email", "source_field_aliases": ["邮箱"] }
+      ]
+    },
+    {
+      "target_table": "asset_movements",
+      "primary_source": "deposit_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "lookup_source": "user_info_raw", "source_field_aliases": ["uuid"] },
+        { "target_field": "movement_type", "static_value": "deposit" },
+        { "target_field": "currency", "source_field_aliases": ["币种"] },
+        { "target_field": "amount", "source_field_aliases": ["数量"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "movement_time", "source_field_aliases": ["时间"], "transformations": [{"function": "parse_universal_datetime"}] }
+      ]
+    },
+    {
+      "target_table": "asset_movements",
+      "primary_source": "withdrawal_raw",
+      "mappings": [
+        { "target_field": "source", "static_value": "OKX" },
+        { "target_field": "user_id", "lookup_source": "user_info_raw", "source_field_aliases": ["uuid"] },
+        { "target_field": "movement_type", "static_value": "withdrawal" },
+        { "target_field": "currency", "source_field_aliases": ["币种"] },
+        { "target_field": "amount", "source_field_aliases": ["数量"], "transformations": [{"function": "string_to_decimal"}] },
+        { "target_field": "movement_time", "source_field_aliases": ["时间"], "transformations": [{"function": "parse_universal_datetime"}] }
+      ]
+    }
+  ]
+}

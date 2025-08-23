@@ -1,129 +1,414 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { UploadFilled } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus'; // 引入 ElMessage 和 ElMessageBox
 
-// --- 状态定义 ---
-// 使用 ref 创建响应式变量，用于和模板中的元素进行绑定
-const searchQuery = ref('');      // 绑定搜索输入框的内容
-const uploadStatus = ref('');     // 绑定上传状态的文本
-const uploadStatusColor = ref('');// 绑定上传状态文本的颜色
-
-
-
-// --- 路由与导航 ---
-// 获取路由实例，用于页面跳转
+// --- 状态定义 (State) ---
+// 页面核心状态
+const searchQuery = ref('');
 const router = useRouter();
 
-// --- 方法定义 ---
+// 上传悬浮窗相关状态
+const dialogUploadVisible = ref(false);
+const companies = ref(['欧意', '币安', '火币', 'ImToken', 'TokenPocket']);
+const selectedCompany = ref('');
+
+
+// --- 生命周期钩子 (Lifecycle Hooks) ---
+onMounted(() => {
+  // 初始化公司选择，实现记忆功能
+  const savedCompany = localStorage.getItem('lastSelectedCompany');
+  if (savedCompany && companies.value.includes(savedCompany)) {
+    selectedCompany.value = savedCompany;
+  } else {
+    selectedCompany.value = companies.value[0]; // 默认选择第一个
+  }
+});
+
+
+// --- 方法定义 (Methods) ---
 
 /**
- * 处理搜索表单提交事件
+ * 处理页面主搜索逻辑
  */
 function handleSearch() {
   const queryValue = searchQuery.value.trim();
   if (!queryValue) {
-    alert('请输入查询内容！');
+    ElMessage.warning('请输入查询内容！'); // 使用 ElMessage 提升体验
     return;
   }
-  
-  // Vue 单页应用的核心导航方式：
-  // 我们不再在这里获取数据，而是直接跳转到结果页，
-  // 并将查询词作为参数放在 URL 中。
-  // 数据获取的任务，将由结果页自己完成。
   router.push({
-    name: 'results', // 对应我们在 router/index.js 中定义的名字
-    params: { query: queryValue }
+    name: 'results',
+    params: { query: queryValue },
   });
 }
 
 /**
- * 触发隐藏的文件上传输入框
+ * 上传前的验证函数
+ * @param {object} file - 文件对象
  */
-function triggerFileUpload() {
-  // 在 Vue 中，我们通常不推荐直接操作 DOM，但对于这种简单场景是可接受的。
-  document.getElementById('file-uploader').click();
+function beforeUpload(file) {
+  // 验证文件大小（100MB限制）
+  const maxSize = 100 * 1024 * 1024; // 100MB
+  if (file.size > maxSize) {
+    ElMessage.error({
+      message: `文件大小不能超过100MB，当前文件大小: ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+      duration: 5000,
+      showClose: true
+    });
+    return false;
+  }
+  
+  // 验证文件类型
+  const allowedTypes = ['.xls', '.xlsx', '.csv'];
+  const fileName = file.name.toLowerCase();
+  const isValidType = allowedTypes.some(type => fileName.endsWith(type));
+  
+  if (!isValidType) {
+    ElMessage.error({
+      message: `不支持的文件格式，请上传Excel(.xlsx/.xls)或CSV文件`,
+      duration: 5000,
+      showClose: true
+    });
+    return false;
+  }
+  
+  return true;
 }
 
 /**
- * 处理文件选择后的事件
+ * el-upload 上传成功后的回调函数
+ * @param {object} response - 服务器返回的响应
+ * @param {object} uploadFile - 上传的文件信息对象
  */
-async function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+function handleUploadSuccess(response, uploadFile) {
+  console.log('收到服务器响应:', response);
+  
+  // 检查响应是否为成功
+  if (response && response.success === true) {
+    // 1. 保存当前选择，用于下次记忆
+    localStorage.setItem('lastSelectedCompany', selectedCompany.value);
 
-  // 1. “门卫”逻辑：文件类型校验
-  const allowedExtensions = ['.xls', '.xlsx', '.json'];
-  const fileName = file.name;
-  const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+    // 2. 关闭悬浮窗
+    dialogUploadVisible.value = false;
 
-  if (!allowedExtensions.includes(fileExtension)) {
-    uploadStatus.value = '错误：请选择有效的 Excel 或 JSON 文件';
-    uploadStatusColor.value = '#ff4d4f';
-    return;
+    // 3. 给出成功提示
+    ElMessage.success({
+      message: response.message || '文件上传和处理成功！',
+      duration: 5000,
+      showClose: true
+    });
+  } else {
+    // 处理服务器返回的错误响应（即使HTTP状态码是200，但success为false）
+    console.error('服务器返回错误:', response);
+    handleErrorResponse(response);
+  }
+}
+
+/**
+ * 处理错误响应的统一函数
+ * @param {object} errorResponse - 错误响应对象
+ */
+function handleErrorResponse(errorResponse) {
+  console.log('handleErrorResponse 被调用，参数:', errorResponse);
+  
+  const error = errorResponse.error || {};
+  
+  // 基础错误消息
+  const title = error.title || error.user_message || '处理文件时发生错误';
+  
+  console.log('基础错误消息:', title);
+  
+  // 构建详细的错误内容（HTML格式）
+  let detailsHtml = `<div style="text-align: left;">`;
+  
+  // 添加主要错误信息
+  detailsHtml += `<div style="font-size: 16px; font-weight: bold; color: #e74c3c; margin-bottom: 16px;">`;
+  detailsHtml += `🚫 ${title}`;
+  detailsHtml += `</div>`;
+  
+  // 添加详细信息
+  if (error.details) {
+    // 尝试解析结构化错误信息（多模板错误）
+    let structuredError = null;
+    try {
+      structuredError = JSON.parse(error.details);
+    } catch (e) {
+      // 不是JSON格式，使用原始文本
+    }
+    
+    if (structuredError && structuredError.template_errors && structuredError.template_errors.length > 0) {
+      // 处理多模板结构化错误
+      detailsHtml += `<div style="margin-bottom: 16px;">`;
+      detailsHtml += `<div style="font-weight: bold; color: #2c3e50; margin-bottom: 12px;">📋 模板匹配详情：</div>`;
+      
+      // 显示平台和模板数量概述
+      detailsHtml += `<div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #3498db;">`;
+      detailsHtml += `<div style="font-weight: bold; color: #2c3e50; margin-bottom: 8px;">📊 ${structuredError.platform} 平台</div>`;
+      detailsHtml += `<div style="color: #555; font-size: 14px;">已测试 ${structuredError.template_count} 个模板版本，均无法匹配您的文件</div>`;
+      detailsHtml += `</div>`;
+      
+      // 显示每个模板的错误详情
+      structuredError.template_errors.forEach((templateError, index) => {
+        const isLast = index === structuredError.template_errors.length - 1;
+        
+        detailsHtml += `<div style="background: #fff5f5; padding: 12px; border-radius: 6px; margin-bottom: ${isLast ? '0' : '8px'}; border-left: 4px solid #e74c3c;">`;
+        detailsHtml += `<div style="display: flex; align-items: center; margin-bottom: 6px;">`;
+        detailsHtml += `<div style="background: #e74c3c; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 8px; flex-shrink: 0;">${index + 1}</div>`;
+        detailsHtml += `<div style="font-weight: bold; color: #2c3e50;">${templateError.template_name}</div>`;
+        detailsHtml += `</div>`;
+        
+        // 优化工作表名称的显示
+        let errorDisplay = templateError.error_summary;
+        if (errorDisplay.includes('缺少工作表：') && errorDisplay.length > 50) {
+          // 如果工作表名称很长，进行换行处理
+          const parts = errorDisplay.split('缺少工作表：');
+          if (parts.length > 1) {
+            const worksheetNames = parts[1];
+            const names = worksheetNames.split('、');
+            if (names.length > 3) {
+              // 多于3个工作表时，按行显示
+              let formattedNames = '';
+              for (let i = 0; i < names.length; i += 3) {
+                const batch = names.slice(i, i + 3);
+                formattedNames += batch.join('、');
+                if (i + 3 < names.length) {
+                  formattedNames += '<br>　　　　　　';
+                }
+              }
+              errorDisplay = `缺少工作表：<br>　　　　　　${formattedNames}`;
+            }
+          }
+        }
+        
+        detailsHtml += `<div style="color: #e74c3c; font-size: 14px; margin-left: 28px; line-height: 1.6;">${errorDisplay}</div>`;
+        detailsHtml += `</div>`;
+      });
+      
+      detailsHtml += `</div>`;
+    } else {
+      // 处理普通错误信息
+      detailsHtml += `<div style="margin-bottom: 16px;">`;
+      detailsHtml += `<div style="font-weight: bold; color: #2c3e50; margin-bottom: 8px;">📋 错误详情：</div>`;
+      detailsHtml += `<div style="background: #f8f9fa; padding: 12px; border-radius: 6px; border-left: 4px solid #e74c3c; font-size: 14px; color: #555; line-height: 1.5;">`;
+      detailsHtml += error.details;
+      detailsHtml += `</div>`;
+      detailsHtml += `</div>`;
+    }
   }
   
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    // 2. 更新UI：告知用户上传开始
-    uploadStatus.value = `正在上传文件: "${file.name}"...`;
-    uploadStatusColor.value = '#1967d2';
-
-    // 3. 核心上传逻辑
-    const response = await fetch('http://127.0.0.1:5000/api/upload', {
-      method: 'POST',
-      body: formData,
+  // 添加建议信息
+  if (error.suggestions && error.suggestions.length > 0) {
+    detailsHtml += `<div style="margin-bottom: 16px;">`;
+    detailsHtml += `<div style="font-weight: bold; color: #2c3e50; margin-bottom: 8px;">💡 解决建议：</div>`;
+    detailsHtml += `<div style="background: #e8f5e8; padding: 16px; border-radius: 6px; border-left: 4px solid #27ae60;">`;
+    
+    let currentSection = '';
+    error.suggestions.forEach(suggestion => {
+      // 检查是否是空行（用于分段）
+      if (suggestion.trim() === "") {
+        detailsHtml += `<div style="height: 12px;"></div>`;
+      } else if (suggestion.includes('：') && !suggestion.startsWith('•')) {
+        // 主要标题（如 "🔍 模板匹配结果："）
+        currentSection = suggestion;
+        detailsHtml += `<div style="font-weight: bold; color: #2c3e50; margin-bottom: 8px; font-size: 15px;">${suggestion}</div>`;
+      } else if (suggestion.startsWith('•')) {
+        // 建议项
+        const content = suggestion.substring(1).trim();
+        detailsHtml += `<div style="display: flex; align-items: flex-start; margin-bottom: 6px;">`;
+        detailsHtml += `<div style="color: #27ae60; margin-right: 8px; margin-top: 2px;">•</div>`;
+        detailsHtml += `<div style="color: #555; font-size: 14px; line-height: 1.4;">${content}</div>`;
+        detailsHtml += `</div>`;
+      } else {
+        // 普通文本（如数字信息）
+        const textColor = suggestion.includes('已尝试') ? '#666' : '#555';
+        const fontSize = suggestion.includes('已尝试') ? '13px' : '14px';
+        detailsHtml += `<div style="margin-bottom: 6px; color: ${textColor}; font-size: ${fontSize}; margin-left: 4px;">${suggestion}</div>`;
+      }
     });
     
-    const result = await response.json();
-
-    if (response.ok && result.status === 'success') {
-      // 4. 更新UI：成功
-      uploadStatus.value = result.message || `文件上传成功！`;
-      uploadStatusColor.value = '#52c41a';
-    } else {
-      throw new Error(result.message || '上传失败');
-    }
-
-  } catch (error) {
-    // 5. 更新UI：失败
-    uploadStatus.value = `错误: ${error.message}`;
-    uploadStatusColor.value = '#ff4d4f';
-    console.error('上传文件时出错:', error);
-  } finally {
-    // 6. 清理工作：无论成功失败，都重置文件输入框
-    event.target.value = '';
+    detailsHtml += `</div>`;
+    detailsHtml += `</div>`;
   }
+  
+  detailsHtml += `</div>`;
+  
+  console.log('生成的详细错误HTML:', detailsHtml);
+
+  // 使用 ElMessageBox 显示更美观的错误对话框
+  ElMessageBox.alert(detailsHtml, '文件处理失败', {
+    confirmButtonText: '我知道了',
+    type: 'error',
+    dangerouslyUseHTMLString: true,
+    customStyle: {
+      width: '700px',
+      maxWidth: '95vw'
+    },
+    customClass: 'custom-error-dialog',
+    beforeClose: (action, instance, done) => {
+      done();
+    }
+  }).catch(() => {
+    // 用户取消时不需要处理
+  });
+
+  // 在控制台输出完整错误信息，便于调试
+  console.error('处理错误完成:', errorResponse);
+}
+
+/**
+ * el-upload 上传失败后的回调函数
+ * @param {Error} error - 错误对象
+ * @param {object} uploadFile - 上传的文件信息对象
+ */
+function handleUploadError(error, uploadFile) {
+  console.error('=== 上传错误开始分析 ===');
+  console.error('错误对象类型:', typeof error);
+  console.error('错误对象:', error);
+  console.error('错误详情:', {
+    message: error.message,
+    status: error.status,
+    responseText: error.responseText,
+    response: error.response
+  });
+  
+  let errorResponse = null;
+  
+  try {
+    // Element Plus的上传组件错误处理
+    // 服务器返回的错误通常在error.responseText中
+    if (error.responseText) {
+      console.log('尝试解析 responseText:', error.responseText);
+      errorResponse = JSON.parse(error.responseText);
+    } else if (error.response && error.response.data) {
+      console.log('尝试解析 response.data:', error.response.data);
+      errorResponse = error.response.data;
+    } else if (error.response) {
+      console.log('尝试解析 response:', error.response);
+      errorResponse = error.response;
+    } else if (error.message && typeof error.message === 'string' && error.message.trim().startsWith('{')) {
+      // Element Plus 特殊情况：错误信息在 message 字段中作为 JSON 字符串
+      console.log('尝试解析 error.message 中的 JSON:', error.message);
+      errorResponse = JSON.parse(error.message);
+    }
+    
+    console.log('解析的错误响应:', errorResponse);
+    
+    // 优先处理我们的结构化错误响应
+    if (errorResponse && errorResponse.error) {
+      console.log('找到结构化错误，使用详细错误处理');
+      handleErrorResponse(errorResponse);
+      return;
+    }
+    
+    // 处理简单的错误信息
+    if (errorResponse && errorResponse.success === false) {
+      console.log('找到错误响应，使用详细错误处理');
+      handleErrorResponse(errorResponse);
+      return;
+    }
+    
+    console.log('没有找到结构化错误响应，使用通用错误处理');
+    
+  } catch (e) {
+    console.error('解析错误响应失败:', e);
+    console.error('原始错误信息:', error.message);
+    console.error('原始响应文本:', error.responseText);
+  }
+  
+  // 如果无法解析服务器错误，显示通用错误消息
+  let defaultMessage = '文件上传失败';
+  
+  // 根据错误状态码提供更具体的信息
+  if (error.status) {
+    switch (error.status) {
+      case 400:
+        defaultMessage = '请求格式错误，请检查文件格式和选择的平台';
+        break;
+      case 413:
+        defaultMessage = '文件过大，请选择较小的文件';
+        break;
+      case 500:
+        defaultMessage = '服务器内部错误，请稍后重试或联系技术支持';
+        break;
+      case 0:
+        defaultMessage = '网络连接失败，请检查网络连接后重试';
+        break;
+      default:
+        defaultMessage = `上传失败 (错误代码: ${error.status})`;
+    }
+  } else if (error.message) {
+    if (error.message.includes('Network Error') || error.message.includes('timeout')) {
+      defaultMessage = '网络连接失败，请检查网络连接后重试';
+    } else {
+      defaultMessage = `上传失败: ${error.message}`;
+    }
+  }
+  
+  ElMessage.error({
+    message: defaultMessage,
+    duration: 8000,
+    showClose: true
+  });
 }
 </script>
 
 <template>
-    <div class="main-container">
-        <h1>虚拟币查询平台</h1>
+  <div class="main-container">
+    <h1>虚拟币查询平台</h1>
 
-        <form @submit.prevent="handleSearch">
-        <div class="search-wrapper">
-            <span class="search-label">单个要素查询</span>
-            
-            <input 
-            type="text" 
-            v-model="searchQuery"
-            class="search-input" 
-            placeholder="请输入比特币地址或手机号..."
-            >
-            
-            <button type="submit" class="btn query-button">查询</button>
-            
-            <button type="button" class="btn upload-button" @click="triggerFileUpload">上传数据</button>
-        </div>
-        </form>
+    <form @submit.prevent="handleSearch" class="search-form">
+      <div class="search-wrapper">
+        <span class="search-label">单个要素查询</span>
+        <input
+          type="text"
+          v-model="searchQuery"
+          class="search-input"
+          placeholder="请输入比特币地址或手机号..."
+        />
+        <button type="submit" class="btn query-button">查询</button>
+        <button type="button" class="btn upload-button" @click="dialogUploadVisible = true">上传数据</button>
+      </div>
+    </form>
+    
+    <p>示例数据：1c1CxaD5GMxsiEzu5YM5EhHpNFWezWMWhw</p>
+  </div>
 
-        <input type="file" id="file-uploader" style="display: none;" accept=".xls, .xlsx" @change="handleFileUpload">
-        
-        <p id="upload-status" :style="{ color: uploadStatusColor }">{{ uploadStatus }}</p>
-        <p>示例数据：1c1CxaD5GMxsiEzu5YM5EhHpNFWezWMWhw</p>
+  <el-dialog v-model="dialogUploadVisible" title="上传数据文件" width="500px">
+    <div class="upload-dialog-content">
+      <span>选择目标公司：</span>
+      <el-select v-model="selectedCompany" placeholder="请选择公司" style="flex-grow: 1;">
+        <el-option
+          v-for="company in companies"
+          :key="company"
+          :label="company"
+          :value="company"
+        />
+      </el-select>
     </div>
+
+    <el-upload
+      drag
+      action="http://127.0.0.1:5000/api/upload"
+      :data="{ company: selectedCompany }"
+      :on-success="handleUploadSuccess"
+      :on-error="handleUploadError"
+      :before-upload="beforeUpload"
+      :auto-upload="true"
+      accept=".xls, .xlsx, .csv, .json"
+    >
+      <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+      <div class="el-upload__text">
+        将文件拖到此处或 <em>点击上传</em>
+      </div>
+      <template #tip>
+        <div class="el-upload__tip">
+          支持 .xls, .xlsx, .csv, .json 格式的文件
+        </div>
+      </template>
+    </el-upload>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -133,5 +418,77 @@ async function handleFileUpload(event) {
     justify-content: center;
     align-items: center; 
 }
+.upload-dialog-content {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px; /* 和下方的上传区域隔开 */
+}
+.upload-dialog-content span {
+    margin-right: 15px;
+}
+</style>
 
+<style>
+/* 美化错误对话框样式 */
+.custom-error-dialog {
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.custom-error-dialog .el-message-box__header {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    padding: 20px 24px;
+}
+
+.custom-error-dialog .el-message-box__title {
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.custom-error-dialog .el-message-box__content {
+    padding: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.custom-error-dialog .el-message-box__btns {
+    padding: 16px 24px 20px;
+    border-top: 1px solid #ebeef5;
+}
+
+.custom-error-dialog .el-button--primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.custom-error-dialog .el-button--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* 滚动条美化 */
+.custom-error-dialog .el-message-box__content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-error-dialog .el-message-box__content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.custom-error-dialog .el-message-box__content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.custom-error-dialog .el-message-box__content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
 </style>

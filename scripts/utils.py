@@ -2,6 +2,7 @@
 import json
 import pandas as pd
 from pathlib import Path
+from .error_handler import ETLError, ErrorType, create_user_friendly_error
 def inspect_excel_structure(file_path):
     """
     一个调试辅助函数，用来读取一个Excel文件并打印出其所有工作表及其列名的结构。
@@ -32,18 +33,23 @@ def inspect_excel_structure(file_path):
 def determine_company_from_filename(file_path: Path, registry: dict) -> str:
     """
     根据文件名和注册表，判断文件属于哪个公司。
+    优先匹配具体公司名，如果是CSV文件且没有匹配到具体公司，则使用通用CSV模板。
     :param file_path: 文件的Path对象。
     :param registry: 公司模板注册字典。
-    :return: 公司名称的小写字符串 (e.g., 'okx')，如果无法判断则返回None。
+    :return: 公司名称的小写字符串 (e.g., 'okx', 'csv')，如果无法判断则返回None。
     """
     filename_lower = file_path.name.lower()
+    file_extension = file_path.suffix.lower()
     
-    # 遍历注册表里的每一个公司名（'okx', 'binance', 'huobi'...）
+    # 首先尝试匹配具体的公司名（排除通用的csv模板）
     for company_key in registry.keys():
-        # 如果文件名里包含了这个公司名
-        if company_key in filename_lower:
-            # 就返回这个公司名
+        if company_key != 'csv' and company_key in filename_lower:
             return company_key
+    
+    # 如果没有匹配到具体公司，但是是CSV文件，则使用通用CSV模板
+    if file_extension == '.csv' and 'csv' in registry:
+        print(f"  - 未识别到具体公司，但检测到CSV文件，将使用通用CSV模板处理")
+        return 'csv'
             
     return None # 如果找了一圈都没找到，就返回None
 #数据库连接功能测试
@@ -65,7 +71,7 @@ def get_db_engine(db_config: dict):
             f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}"
             f"@{db_config['host']}:{db_config['port']}/{db_config['db_name']}"
         )
-        return create_engine(conn_url)
+        return create_engine(conn_url, echo=False)  # 关闭SQL语句输出
     else:
         raise ValueError(f"当前配置只支持 'mysql'，但收到了 '{db_type}'")
 
@@ -73,9 +79,9 @@ def get_db_engine(db_config: dict):
 def test_database_connection(db_config: dict):
     """
     接收一个数据库配置字典，尝试连接数据库，并打印连接结果。
+    如果连接失败，会抛出ETLError异常。
     :param db_config: 一个包含数据库连接信息的字典
     """
-    print("--- 开始测试数据库连接 (来自 utils.py) ---")
     try:
         # 尝试通过传入的配置获取数据库引擎
         engine = get_db_engine(db_config)
@@ -83,15 +89,16 @@ def test_database_connection(db_config: dict):
         # 尝试建立一个真实的连接
         connection = engine.connect()
         
-        print("✅ 数据库连接成功！")
-        print(f"服务器版本: {engine.dialect.server_version_info}")
+        print("  ✅ 数据库连接成功！")
+        print(f"  📡 服务器版本: {engine.dialect.server_version_info}")
         
         connection.close()
         
     except Exception as e:
-        print("❌ 数据库连接失败。请检查您的 DB_CONFIG 配置。")
-        print(f"错误详情: {e}")
-    print("--- 数据库连接测试结束 ---")
+        print("  ❌ 数据库连接失败。请检查您的 DB_CONFIG 配置。")
+        print(f"  🔥 错误详情: {e}")
+        # 重新抛出为ETL错误，供上层捕获
+        raise e
 
 
 #加载.jsonc文件的工具
@@ -105,21 +112,20 @@ def load_mapping_config(path: Path) -> dict:
     """
     加载并解析 .jsonc 映射文件。
     :param path: 指向 .jsonc 文件的 Path 对象。
-    :return: 一个包含配置信息的字典，如果失败则返回 None。
+    :return: 一个包含配置信息的字典，如果失败则抛出异常。
     """
-    print(f"--- 开始加载映射文件 (来自 utils.py): {path} ---")
     try:
+        if not path.exists():
+            raise FileNotFoundError(f"模板文件不存在: {path}")
+            
         with open(path, 'r', encoding='utf-8') as f:
             config_data = commentjson.load(f)
-            print("✅ 映射文件解析成功！")
+            print(f"  ✅ 配置模板加载成功: {path.name}")
             return config_data
-    except FileNotFoundError:
-        print(f"❌ 错误: 映射文件未找到，请检查路径。路径: {path}")
-        return None
     except Exception as e:
-        print(f"❌ 错误: 解析映射文件时出错。请检查文件内容是否为合法的JSONC格式。")
-        print(f"错误详情: {e}")
-        return None
+        print(f"  ❌ 加载模板文件失败: {str(e)}")
+        # 重新抛出原始异常，供上层处理
+        raise e
 
 #接收处理好的数据(df)、目标表名(table_name)和数据库配置(db_config)，然后执行写入操作
 def write_df_to_db(df, table_name: str, db_config: dict):
@@ -130,14 +136,14 @@ def write_df_to_db(df, table_name: str, db_config: dict):
     :param db_config: 数据库连接配置字典。
     """
     if df is None or df.empty:
-        print(f"  - 🟡 数据为空，无需写入表 '{table_name}'。")
+        print(f"    🟡 '{table_name}' 表无数据，跳过写入")
         return
 
     try:
         # 从我们已有的函数中获取数据库引擎
         engine = get_db_engine(db_config)
         
-        print(f"  - ⚙️ 开始将 {len(df)} 条记录写入表 '{table_name}'...")
+        print(f"    📝 写入 {len(df)} 条记录到 '{table_name}' 表...")
         
         # 使用pandas强大的to_sql功能，将整个DataFrame一次性写入数据库
         df.to_sql(
@@ -147,10 +153,12 @@ def write_df_to_db(df, table_name: str, db_config: dict):
             index=False,           # 不要将DataFrame的行号索引作为一列写入数据库
             chunksize=1000         # 可选：一次写入1000行，对于大数据量可以提高效率
         )
-        print(f"  - 🎉 成功写入表 '{table_name}'！")
+        print(f"    ✅ '{table_name}' 表写入成功！")
         
     except Exception as e:
-        print(f"  - ❌ 写入表 '{table_name}' 时发生错误: {e}")
+        print(f"    ❌ '{table_name}' 表写入失败: {e}")
+        # 重新抛出原始异常，供上层处理
+        raise e
 # (文件上方是您已有的其他函数)
 # ...
 from sqlalchemy import text # <-- 在文件顶部，请确保从sqlalchemy导入text
@@ -198,7 +206,6 @@ def delete_data_by_filename(db_config: dict, table_names: list, source_file_name
     """
     根据源文件名，精准删除所有核心表中的现有数据。
     """
-    print(f"\n--- 正在为文件 '{source_file_name}' 清理旧数据 ---")
     try:
         engine = get_db_engine(db_config)
         with engine.connect() as connection:
@@ -208,10 +215,10 @@ def delete_data_by_filename(db_config: dict, table_names: list, source_file_name
                     # SQL命令现在WHERE条件更精准了
                     delete_sql = text(f"DELETE FROM `{table}` WHERE source_file_name = :file_name")
                     connection.execute(delete_sql, {"file_name": source_file_name})
-                    print(f"  - ✅ 已清理表 '{table}' 中源于该文件的数据。")
+                    print(f"    ✅ 已清理表 '{table}' 中的旧数据")
                 trans.commit()
             except Exception as e:
                 trans.rollback()
                 raise e
     except Exception as e:
-        print(f"❌ 清理旧数据时发生错误: {e}")
+        print(f"    ❌ 清理旧数据时发生错误: {e}")
