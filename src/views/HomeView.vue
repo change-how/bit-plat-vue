@@ -426,6 +426,21 @@ function handleUploadError(error, uploadFile) {
 .upload-dialog-content span {
     margin-right: 15px;
 }
+
+/* 文档按钮样式 */
+.btn.docs-button {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.btn.docs-button:hover {
+    background: linear-gradient(135deg, #764ba2, #667eea);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
 </style>
 
 <style>

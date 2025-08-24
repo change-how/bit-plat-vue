@@ -31,6 +31,12 @@ const router = createRouter({
       name: 'studypage', 
       component: () => import('../views/StudyElementView.vue'),
       meta: { hideHeaderFooter: true } 
+    },
+    {
+      path: '/docs',
+      name: 'docs',
+      component: () => import('../views/DocsView.vue'),
+      meta: { hideHeaderFooter: true }
     }
   ]
 })

@@ -11,7 +11,7 @@
         <router-link to="/">首页</router-link>
         <!-- <router-link to="/about">使用手册</router-link> -->
         <!-- <router-link to="/products">接口API</router-link> --> 
-        <router-link to="/studypage">学习文档</router-link>
+        <router-link to="/docs">📚 文档中心</router-link>
       </nav>
     </header>
 
