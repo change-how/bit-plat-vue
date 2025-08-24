@@ -21,7 +21,8 @@ TABLE_NAMES = [
     'transactions',
     'asset_movements',
     'login_logs',
-    'devices'
+    'devices',
+    'file_metadata'
 ]
 
 
@@ -107,6 +108,28 @@ TABLE_DEFINITIONS = [
         source_file_name TEXT,
         extra_data JSON
     );
+    """,
+    # -- 表6: 文件元信息表 --
+    """
+    CREATE TABLE IF NOT EXISTS file_metadata (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        file_name VARCHAR(255) UNIQUE NOT NULL COMMENT '存储文件名（唯一标识）',
+        original_filename VARCHAR(255) COMMENT '用户上传时的原始文件名',
+        file_size BIGINT COMMENT '文件大小（字节）',
+        file_type VARCHAR(20) COMMENT '文件类型（扩展名）',
+        upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+        platform VARCHAR(50) COMMENT '平台名称（如OKX、Binance等）',
+        file_path TEXT COMMENT '文件存储路径',
+        record_count INT DEFAULT 0 COMMENT '处理后的记录数量',
+        status ENUM('uploaded', 'processing', 'processed', 'error') DEFAULT 'uploaded' COMMENT '处理状态',
+        processed_time TIMESTAMP NULL COMMENT '处理完成时间',
+        error_message TEXT COMMENT '错误信息（如果有）',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_platform (platform),
+        INDEX idx_status (status),
+        INDEX idx_upload_time (upload_time)
+    ) COMMENT='文件元信息表，记录上传文件的详细信息';
     """
 ]
 

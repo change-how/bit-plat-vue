@@ -294,7 +294,7 @@ def download_file(filename):
 
 @app.route('/api/mindmap_data', methods=['GET'])
 def get_mindmap_data():
-    """获取指定用户的思维导图数据 - 返回所有5个表的数据"""
+    """获取指定用户的原始数据 - 由前端转换为思维导图格式"""
     user_id = request.args.get('user_id')
     if not user_id:
         return jsonify({"status": "error", "message": "缺少 user_id 参数"}), 400
@@ -302,6 +302,7 @@ def get_mindmap_data():
     # 获取包含所有表数据的字典
     all_data = get_data_from_db(DB_CONFIG, user_id)
     if all_data is not None:
+        # 直接返回原始数据，让前端处理转换
         return jsonify({"status": "success", "data": all_data})
     else:
         return jsonify({"status": "error", "message": "无法从数据库获取数据或数据为空"}), 404

@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
+from sqlalchemy import text
 from .utils import get_db_engine
 
 def insert_file_metadata(db_config: dict, file_path: str, original_filename: str = None, platform: str = None):
@@ -28,10 +29,22 @@ def insert_file_metadata(db_config: dict, file_path: str, original_filename: str
         engine = get_db_engine(db_config)
         
         # 检查文件是否已存在
-        check_query = "SELECT id FROM file_metadata WHERE file_name = %s"
-        existing = pd.read_sql(check_query, engine, params=(file_path.name,))
+        import mysql.connector
+        conn = mysql.connector.connect(
+            host=db_config.get('host', '127.0.0.1'),
+            port=db_config.get('port', 3306),
+            user=db_config['user'],
+            password=db_config['password'],
+            database=db_config['db_name'],
+            charset='utf8mb4'
+        )
+        cursor = conn.cursor()
         
-        if len(existing) > 0:
+        check_query = "SELECT id FROM file_metadata WHERE file_name = %s"
+        cursor.execute(check_query, (file_path.name,))
+        existing = cursor.fetchall()
+        
+        if existing:
             # 更新现有记录
             update_query = """
             UPDATE file_metadata 
@@ -39,12 +52,11 @@ def insert_file_metadata(db_config: dict, file_path: str, original_filename: str
                 platform = %s, file_path = %s, updated_at = CURRENT_TIMESTAMP
             WHERE file_name = %s
             """
-            with engine.connect() as conn:
-                conn.execute(update_query, (
-                    original_filename, file_size, file_type, 
-                    platform, str(file_path), file_path.name
-                ))
-                conn.commit()
+            cursor.execute(update_query, (
+                original_filename, file_size, file_type, 
+                platform, str(file_path), file_path.name
+            ))
+            conn.commit()
             print(f"更新文件元信息: {file_path.name}")
         else:
             # 插入新记录
@@ -53,14 +65,15 @@ def insert_file_metadata(db_config: dict, file_path: str, original_filename: str
             (file_name, original_filename, file_size, file_type, platform, file_path)
             VALUES (%s, %s, %s, %s, %s, %s)
             """
-            with engine.connect() as conn:
-                conn.execute(insert_query, (
-                    file_path.name, original_filename, file_size, 
-                    file_type, platform, str(file_path)
-                ))
-                conn.commit()
+            cursor.execute(insert_query, (
+                file_path.name, original_filename, file_size, 
+                file_type, platform, str(file_path)
+            ))
+            conn.commit()
             print(f"插入文件元信息: {file_path.name}")
-            
+        
+        cursor.close()
+        conn.close()
         return True
         
     except Exception as e:
@@ -74,8 +87,17 @@ def get_file_metadata_by_names(db_config: dict, file_names: list):
     try:
         if not file_names:
             return []
-            
-        engine = get_db_engine(db_config)
+        
+        # 使用原始mysql连接
+        import mysql.connector
+        conn = mysql.connector.connect(
+            host=db_config.get('host', '127.0.0.1'),
+            port=db_config.get('port', 3306),
+            user=db_config['user'],
+            password=db_config['password'],
+            database=db_config['db_name'],
+            charset='utf8mb4'
+        )
         
         # 构建IN查询
         placeholders = ','.join(['%s'] * len(file_names))
@@ -100,20 +122,26 @@ def get_file_metadata_by_names(db_config: dict, file_names: list):
         ORDER BY upload_time DESC
         """
         
-        result_df = pd.read_sql(query, engine, params=file_names)
+        cursor = conn.cursor()
+        cursor.execute(query, tuple(file_names))
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
         
         # 转换为字典列表
         results = []
-        for _, row in result_df.iterrows():
+        for row in rows:
+            row_dict = dict(zip(columns, row))
             result = {
-                'file_name': row['file_name'],
-                'original_filename': row['original_filename'] or row['file_name'],
-                'file_size': row['file_size_formatted'],
-                'file_type': row['file_type'],
-                'upload_time': row['upload_time'].strftime('%Y-%m-%d %H:%M:%S') if pd.notna(row['upload_time']) else '',
-                'platform': row['platform'] or '未知',
-                'record_count': int(row['record_count']) if pd.notna(row['record_count']) else 0,
-                'status': row['status']
+                'file_name': row_dict['file_name'],
+                'original_filename': row_dict['original_filename'] or row_dict['file_name'],
+                'file_size': row_dict['file_size_formatted'],
+                'file_type': row_dict['file_type'],
+                'upload_time': row_dict['upload_time'].strftime('%Y-%m-%d %H:%M:%S') if row_dict['upload_time'] else '',
+                'platform': row_dict['platform'] or '未知',
+                'record_count': int(row_dict['record_count']) if row_dict['record_count'] is not None else 0,
+                'status': row_dict['status']
             }
             results.append(result)
             
@@ -137,9 +165,21 @@ def update_file_record_count(db_config: dict, file_name: str, record_count: int)
         WHERE file_name = %s
         """
         
-        with engine.connect() as conn:
-            conn.execute(update_query, (record_count, file_name))
-            conn.commit()
+        # 使用原始连接执行
+        import mysql.connector
+        conn = mysql.connector.connect(
+            host=db_config.get('host', '127.0.0.1'),
+            port=db_config.get('port', 3306),
+            user=db_config['user'],
+            password=db_config['password'],
+            database=db_config['db_name'],
+            charset='utf8mb4'
+        )
+        cursor = conn.cursor()
+        cursor.execute(update_query, (record_count, file_name))
+        conn.commit()
+        cursor.close()
+        conn.close()
             
         print(f"更新文件 {file_name} 的记录数: {record_count}")
         return True
