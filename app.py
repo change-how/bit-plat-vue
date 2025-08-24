@@ -1,8 +1,9 @@
 # app.py - Flask Web 服务器主文件
 from scripts.main import run_etl_process_for_file, DB_CONFIG
 from scripts.error_handler import ETLError, format_error_for_frontend
+from scripts.file_metadata import insert_file_metadata, create_file_metadata_table
 from pathlib import Path
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS 
 import logging
 import json
@@ -66,7 +67,7 @@ def search_uid():
             logging.info(f"找到 {len(results)} 个匹配的用户")
             return jsonify({
                 "status": "success", 
-                "data": results,
+                "users": results,  # 修改为 users 以匹配前端期望
                 "count": len(results)
             })
         else:
@@ -171,6 +172,19 @@ def handle_upload():
             
             file.save(upload_file_path)
             print(f"✅ 文件已保存到: {upload_file_path}")
+            
+            # 记录文件元信息到数据库
+            try:
+                insert_file_metadata(
+                    DB_CONFIG, 
+                    upload_file_path, 
+                    original_filename=original_filename,
+                    platform=company_full
+                )
+                print(f"📝 文件元信息已记录到数据库")
+            except Exception as meta_error:
+                print(f"⚠️ 记录文件元信息失败: {meta_error}")
+                # 不中断主流程，仅记录警告
 
             # 执行ETL流程
             print("\n" + "~"*60)
@@ -247,17 +261,48 @@ def handle_upload():
             }
         }), 500
 
+@app.route('/api/download/<filename>', methods=['GET'])
+def download_file(filename):
+    """安全的文件下载接口"""
+    try:
+        # 安全检查：防止路径遍历攻击
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return jsonify({"status": "error", "message": "非法文件名"}), 400
+        
+        # 构建完整文件路径
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            return jsonify({"status": "error", "message": "文件不存在"}), 404
+        
+        # 检查是否在允许的目录内
+        if not os.path.abspath(file_path).startswith(os.path.abspath(app.config['UPLOAD_FOLDER'])):
+            return jsonify({"status": "error", "message": "访问被拒绝"}), 403
+        
+        # 返回文件
+        return send_file(
+            file_path, 
+            as_attachment=True, 
+            download_name=filename,
+            mimetype='application/octet-stream'
+        )
+        
+    except Exception as e:
+        logging.error(f"文件下载失败: {e}")
+        return jsonify({"status": "error", "message": "下载失败"}), 500
+
 @app.route('/api/mindmap_data', methods=['GET'])
 def get_mindmap_data():
-    """获取指定用户的思维导图数据"""
+    """获取指定用户的思维导图数据 - 返回所有5个表的数据"""
     user_id = request.args.get('user_id')
     if not user_id:
         return jsonify({"status": "error", "message": "缺少 user_id 参数"}), 400
     
-    data_df = get_data_from_db(DB_CONFIG, user_id)
-    if data_df is not None:
-        data_dict = data_df.to_dict(orient='records')
-        return jsonify({"status": "success", "data": data_dict})
+    # 获取包含所有表数据的字典
+    all_data = get_data_from_db(DB_CONFIG, user_id)
+    if all_data is not None:
+        return jsonify({"status": "success", "data": all_data})
     else:
         return jsonify({"status": "error", "message": "无法从数据库获取数据或数据为空"}), 404
 

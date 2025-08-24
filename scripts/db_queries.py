@@ -5,22 +5,76 @@ import pandas as pd
 
 def get_data_from_db(db_config: dict, user_id: str):
     """
-    根据用户ID从数据库获取所有相关数据。
+    根据用户ID从数据库获取所有5个表的相关数据。
+    返回格式: {
+        "users": [...],
+        "transactions": [...],
+        "asset_movements": [...], 
+        "login_logs": [...],
+        "devices": [...],
+        "source_files": [...]
+    }
     """
-    print(f"准备从数据库中为用户 '{user_id}' 查询数据...")
+    print(f"准备从数据库中为用户 '{user_id}' 查询所有相关数据...")
     engine = get_db_engine(db_config)
     
-    # 定义我们要执行的SQL查询语句
-    query = f"""
-    SELECT * FROM transactions 
-    WHERE user_id = '{user_id}';
-    """
-    print(query)
-    # 使用pandas执行查询
+    result = {
+        "users": [],
+        "transactions": [],
+        "asset_movements": [],
+        "login_logs": [],
+        "devices": [],
+        "source_files": []
+    }
+    
+    # 查询所有表的数据
+    tables = [
+        ("users", "SELECT * FROM users WHERE user_id = %s"),
+        ("transactions", "SELECT * FROM transactions WHERE user_id = %s"),
+        ("asset_movements", "SELECT * FROM asset_movements WHERE user_id = %s"),
+        ("login_logs", "SELECT * FROM login_logs WHERE user_id = %s"),
+        ("devices", "SELECT * FROM devices WHERE user_id = %s")
+    ]
+    
     try:
-        transactions_df = pd.read_sql(query, engine)
-        print(f"成功查询到 {len(transactions_df)} 条交易记录。")
-        return transactions_df
+        source_files_set = set()
+        
+        for table_name, query in tables:
+            print(f"查询 {table_name} 表...")
+            df = pd.read_sql(query, engine, params=(user_id,))
+            
+            # 转换为字典列表，处理NaN值
+            records = []
+            for _, row in df.iterrows():
+                record = {}
+                for col in df.columns:
+                    value = row[col]
+                    if pd.isna(value):
+                        record[col] = None
+                    else:
+                        record[col] = value
+                records.append(record)
+            
+            result[table_name] = records
+            print(f"从 {table_name} 表获取到 {len(records)} 条记录")
+            
+            # 收集源文件信息
+            for record in records:
+                if record.get('source_file_name'):
+                    source_files_set.add(record['source_file_name'])
+        
+        # 处理源文件列表 - 获取详细信息
+        if source_files_set:
+            from .file_metadata import get_file_metadata_by_names
+            file_metadata_list = get_file_metadata_by_names(db_config, list(source_files_set))
+            result["source_files"] = file_metadata_list
+        else:
+            result["source_files"] = []
+        
+        print(f"共涉及 {len(result['source_files'])} 个源文件，已获取详细信息")
+        
+        return result
+        
     except Exception as e:
         print(f"数据库查询失败: {e}")
         return None
@@ -46,13 +100,15 @@ def search_users_by_fuzzy_term(db_config: dict, search_term: str):
         u.source,
         '用户信息' as match_type,
         CONCAT_WS(' | ', 
+            CASE WHEN u.user_id LIKE '{search_pattern}' THEN CONCAT('用户ID: ', u.user_id) END,
             CASE WHEN u.name LIKE '{search_pattern}' THEN CONCAT('姓名: ', u.name) END,
             CASE WHEN u.phone_number LIKE '{search_pattern}' THEN CONCAT('手机: ', u.phone_number) END,
             CASE WHEN u.email LIKE '{search_pattern}' THEN CONCAT('邮箱: ', u.email) END,
             CASE WHEN u.source LIKE '{search_pattern}' THEN CONCAT('平台: ', u.source) END
         ) as match_details
     FROM users u
-    WHERE u.name LIKE '{search_pattern}' 
+    WHERE u.user_id LIKE '{search_pattern}'
+       OR u.name LIKE '{search_pattern}' 
        OR u.phone_number LIKE '{search_pattern}'
        OR u.email LIKE '{search_pattern}'
        OR u.source LIKE '{search_pattern}'
