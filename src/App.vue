@@ -41,53 +41,68 @@
   flex-direction: column;
   min-height: 100vh;
   width: 100%;
-  min-height: 100vh
 }
+
 header {
   display: flex;
   background-color: rgba(174, 153, 253, 0.7);
   align-items: center;
   height: 60px;
   text-align: center;
-  justify-content:space-between;;
-  /* opacity:90%; */
+  justify-content: space-between;
   padding: 0 24px;
   flex-shrink: 0;
-  
-}
-.logo-title-container {
-  display: flex; /* 使用 flex 布局 */
-  align-items: center; /* 垂直居中对齐图标和文字 */
-  gap: 12px; /* 在图标和文字之间创建一个优雅的间距 */
 }
 
-/* 标题文字的样式 */
-.title-text {
-  font-size: 20px;
-  font-weight: 600; /* 字体加粗 */
-  color: #333; /* 标题颜色 */
+.logo-title-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
+
+.title-text {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 footer {
   display: flex;
   background-color: rgba(174, 153, 253, 0.7);
   align-items: center;
-  justify-content:center;
-  text-align: center;
-  opacity:80%;
-  height:10%;
-}
-main {
-  width:100%;
-  height: 100%;
-
-  display: flex;
   justify-content: center;
-  align-items: center;   
+  text-align: center;
+  opacity: 80%;
+  height: 50px;
+  flex-shrink: 0;
+  margin-top: auto;
 }
+
 nav a {
   margin: 0 10px;
   text-decoration: none;
   color: #333;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
 
+nav a:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  color: #2c3e50;
+}
+
+nav a.router-link-active {
+  background-color: rgba(255, 255, 255, 0.5);
+  color: #2c3e50;
+  font-weight: 600;
 }
 </style>

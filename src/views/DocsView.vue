@@ -211,9 +211,10 @@ const openDoc = (filename) => {
 
 <style scoped>
 .docs-container {
-  min-height: 100vh;
+  min-height: calc(100vh - 110px); /* 减去header和footer的高度 */
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   padding: 40px 20px;
+  overflow-y: auto;
 }
 
 .docs-header {

@@ -130,7 +130,7 @@ def load_mapping_config(path: Path) -> dict:
 #接收处理好的数据(df)、目标表名(table_name)和数据库配置(db_config)，然后执行写入操作
 def write_df_to_db(df, table_name: str, db_config: dict):
     """
-    将一个DataFrame写入到指定的数据库表中，支持重复键处理。
+    将一个DataFrame写入到指定的数据库表中。
     :param df: 要写入的Pandas DataFrame。
     :param table_name: 目标数据库表的名称。
     :param db_config: 数据库连接配置字典。
@@ -145,67 +145,20 @@ def write_df_to_db(df, table_name: str, db_config: dict):
         
         print(f"    📝 写入 {len(df)} 条记录到 '{table_name}' 表...")
         
-        # 对于有唯一约束的表，使用INSERT ... ON DUPLICATE KEY UPDATE
-        if table_name == 'users':
-            _write_with_upsert(df, table_name, engine)
-        else:
-            # 其他表使用常规的append模式
-            df.to_sql(
-                name=table_name,       # 目标表名
-                con=engine,            # 数据库连接引擎
-                if_exists='append',    # 如果表已存在，就追加数据
-                index=False,           # 不要将DataFrame的行号索引作为一列写入数据库
-                chunksize=1000         # 可选：一次写入1000行，对于大数据量可以提高效率
-            )
-        
+        # 使用pandas强大的to_sql功能，将整个DataFrame一次性写入数据库
+        df.to_sql(
+            name=table_name,       # 目标表名
+            con=engine,            # 数据库连接引擎
+            if_exists='append',    # 如果表已存在，就追加数据。'replace'会替换整个表。
+            index=False,           # 不要将DataFrame的行号索引作为一列写入数据库
+            chunksize=1000         # 可选：一次写入1000行，对于大数据量可以提高效率
+        )
         print(f"    ✅ '{table_name}' 表写入成功！")
         
     except Exception as e:
         print(f"    ❌ '{table_name}' 表写入失败: {e}")
         # 重新抛出原始异常，供上层处理
         raise e
-
-def _write_with_upsert(df, table_name: str, engine):
-    """
-    使用INSERT ... ON DUPLICATE KEY UPDATE语法写入数据，避免唯一键冲突
-    """
-    from sqlalchemy import text
-    
-    with engine.connect() as connection:
-        for _, row in df.iterrows():
-            # 构建列名和值
-            columns = list(df.columns)
-            placeholders = [f":{col}" for col in columns]
-            
-            # 构建UPDATE子句，更新除了主键之外的所有字段
-            update_clauses = []
-            for col in columns:
-                if col not in ['id', 'user_id']:  # 跳过主键和唯一键
-                    update_clauses.append(f"{col} = :{col}")
-            
-            # 构建SQL语句
-            sql = f"""
-            INSERT INTO {table_name} ({', '.join(columns)})
-            VALUES ({', '.join(placeholders)})
-            ON DUPLICATE KEY UPDATE
-            {', '.join(update_clauses)}
-            """
-            
-            # 准备参数，处理NaN值
-            params = {}
-            for col in columns:
-                value = row[col]
-                if pd.isna(value):
-                    params[col] = None
-                else:
-                    params[col] = value
-            
-            try:
-                connection.execute(text(sql), params)
-                connection.commit()
-            except Exception as e:
-                print(f"    ⚠️ 单行写入失败，尝试跳过: {e}")
-                continue
 # (文件上方是您已有的其他函数)
 # ...
 from sqlalchemy import text # <-- 在文件顶部，请确保从sqlalchemy导入text

@@ -412,34 +412,157 @@ function handleUploadError(error, uploadFile) {
 </template>
 
 <style scoped>
-.main-container{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center; 
+.main-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 110px); /* 减去header和footer的高度 */
+  padding: 40px 20px;
+  box-sizing: border-box;
 }
+
+.main-container h1 {
+  font-size: 3em;
+  color: #2c3e50;
+  margin-bottom: 40px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.search-form {
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 30px;
+}
+
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.search-label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 250px;
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.query-button {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.query-button:hover {
+  background: linear-gradient(135deg, #764ba2, #667eea);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.upload-button {
+  background: linear-gradient(135deg, #52c41a, #389e0d);
+  color: white;
+}
+
+.upload-button:hover {
+  background: linear-gradient(135deg, #389e0d, #52c41a);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+}
+
+.main-container p {
+  color: #7f8c8d;
+  font-size: 14px;
+  text-align: center;
+  margin: 0;
+}
+
 .upload-dialog-content {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px; /* 和下方的上传区域隔开 */
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
 }
+
 .upload-dialog-content span {
-    margin-right: 15px;
+  margin-right: 15px;
+  font-weight: 500;
+  color: #2c3e50;
 }
 
-/* 文档按钮样式 */
-.btn.docs-button {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    border: none;
-    transition: all 0.3s ease;
-    margin-left: 10px;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .main-container {
+    padding: 20px 10px;
+  }
+  
+  .main-container h1 {
+    font-size: 2em;
+    margin-bottom: 30px;
+  }
+  
+  .search-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .search-input {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .btn {
+    width: 100%;
+  }
 }
 
-.btn.docs-button:hover {
-    background: linear-gradient(135deg, #764ba2, #667eea);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+@media (max-width: 480px) {
+  .main-container h1 {
+    font-size: 1.5em;
+  }
+  
+  .search-wrapper {
+    padding: 15px;
+  }
+  
+  .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
 }
 </style>
 

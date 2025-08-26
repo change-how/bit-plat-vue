@@ -670,16 +670,96 @@ onMounted(
 
 </script>
 <style scoped>
+.page-wrapper {
+  display: flex;
+  height: calc(100vh - 110px); /* 减去header和footer的高度 */
+  width: 100%;
+  overflow: hidden;
+}
+
+.sidebar-left, .sidebar-right {
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-left {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+}
+
+.sidebar-right {
+  width: 400px;
+  min-width: 400px;
+  flex-shrink: 0;
+  border-left: 1px solid #e8e8e8;
+  border-right: none;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.sidebar-header svg {
+  color: #666;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
 .main-content {
   display: flex;
   flex-direction: column;
-  /* 如果外层 page-wrapper 已经控制了高度，可能不需要下面这行 */
-  /* 但加上它可以确保在各种情况下，main-content 都占满整个视口高度 */
-  height: 100vh; 
+  flex: 1;
 }
+
 #mindMapContainer {
-  flex-grow: 1; /* 告诉它，占据父容器里所有剩余的垂直空间 */
-  width: 100%; /* 宽度占满 */
+  flex: 1;
+  width: 100%;
+  min-height: 400px;
+}
+
+.main-content-header {
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  flex-shrink: 0;
+}
+
+.main-content-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.detail-panel-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 200px;
+  color: #666;
+  font-size: 16px;
 }
 
 /* 右侧详情面板样式 */
